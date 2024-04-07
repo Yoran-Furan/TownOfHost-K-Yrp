@@ -78,8 +78,61 @@ namespace TownOfHost
         {
             Logger.CurrentMethod();
             Logger.Info("-----------ゲーム開始-----------", "Phase");
+            if (GameStates.IsFreePlay && Main.EditMode)
+            {
+                Main.CustomSpawnPosition.TryAdd(AmongUsClient.Instance.TutorialMapId, new List<Vector2>());
+                _ = new LateTask(() =>
+                {
+                    PlayerControl.LocalPlayer.SetRole(AmongUs.GameOptions.RoleTypes.Shapeshifter);
+                    if (PlayerControl.AllPlayerControls.Count < 10)
+                    {
+                        //SNR参考 https://github.com/SuperNewRoles/SuperNewRoles/blob/master/SuperNewRoles/Modules/BotManager.cs
+                        byte id = 0;
+                        foreach (var p in PlayerControl.AllPlayerControls)
+                            id++;
+                        for (var i = 0; PlayerControl.AllPlayerControls.Count < 10; i++)
+                        {
+                            var dummy = GameObject.Instantiate(AmongUsClient.Instance.PlayerPrefab);
+                            dummy.isDummy = true;
+                            dummy.PlayerId = id;
+                            GameData.Instance.AddPlayer(dummy);
+                            AmongUsClient.Instance.Spawn(dummy);
+                            dummy.NetTransform.enabled = true;
+                            dummy.SetColor(8);
+                            id++;
+                        }
+                    }
+                    //Mark
+                    var mark = Utils.LoadSprite("TownOfHost.Resources.SpawnMark.png", 300f);
+                    foreach (var p in PlayerControl.AllPlayerControls.ToArray().Where(p => p.PlayerId > 1))
+                    {
+                        _ = new LateTask(() =>
+                        {
+                            var nametext = p.transform.Find("Names/NameText_TMP");
+                            nametext.transform.position -= new Vector3(0, nametext.gameObject.activeSelf ? 0.3f : -0.3f);
+                            nametext.gameObject.SetActive(true);
+                        }, 0.5f);
+                        GameObject.Destroy(p.transform.Find("Names/ColorblindName_TMP").gameObject);
+                        p.transform.Find("BodyForms").gameObject.active = false;
+                        var hand = p.transform.Find("BodyForms/Seeker/SeekerHand");
+                        var Mark = GameObject.Instantiate(hand, hand.transform.parent.parent.parent);
+                        Mark.transform.localPosition = new Vector2(0, 0);
+                        Mark.GetComponent<SpriteRenderer>().sprite = mark;
+                        Component.Destroy(Mark.GetComponent<PowerTools.SpriteAnimNodeSync>());
+                        Mark.name = "Mark";
+                        Mark.gameObject.SetActive(true);
+                    }
+                }, 0.2f);
+                return;
+            }
             if (GameStates.IsModHost && Main.UseWebHook.Value) Utils.WH_ShowActiveRoles();
             Utils.CountAlivePlayers(true);
+            Main.RTAMode = Options.CurrentGameMode == CustomGameMode.TaskBattle && Main.AllPlayerControls.Count() is 1;
+            _ = new LateTask(() =>
+            {
+                HudManagerPatch.TaskBattlep = PlayerControl.LocalPlayer.transform.position;
+                HudManagerPatch.TaskBattleTimer = 0f;
+            }, 1f, "TaskBattle TimerReset");
         }
     }
     [HarmonyPatch(typeof(ShipStatus), nameof(ShipStatus.StartMeeting))]
@@ -89,6 +142,14 @@ namespace TownOfHost
         {
             MeetingStates.ReportTarget = target;
             MeetingStates.DeadBodies = UnityEngine.Object.FindObjectsOfType<DeadBody>();
+        }
+        public static void Postfix()
+        {
+            // 全プレイヤーを湧いてない状態にする
+            foreach (var state in PlayerState.AllPlayerStates.Values)
+            {
+                state.HasSpawned = false;
+            }
         }
     }
     [HarmonyPatch(typeof(ShipStatus), nameof(ShipStatus.Begin))]

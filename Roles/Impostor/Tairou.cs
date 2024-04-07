@@ -2,8 +2,6 @@ using AmongUs.GameOptions;
 using TownOfHost.Roles.Core;
 using TownOfHost.Roles.Core.Interfaces;
 
-
-
 namespace TownOfHost.Roles.Impostor
 {
     public sealed class Tairou : RoleBase, IImpostor
@@ -16,7 +14,7 @@ namespace TownOfHost.Roles.Impostor
                 () => RoleTypes.Impostor,
                 CustomRoleTypes.Impostor,
                 5000,
-                null,
+                SetupOptionItem,
                 "t"
             );
         public Tairou(PlayerControl player)
@@ -24,17 +22,19 @@ namespace TownOfHost.Roles.Impostor
                 RoleInfo,
                 player
             )
-        { }
-        public override bool OnCheckMurderAsTarget(MurderInfo info) //シェリフが大狼を切ったら誤爆する処理
         {
-            (var killer, var target) = info.AttemptTuple;
-            if (killer.GetCustomRole() is CustomRoles.Sheriff)
-            {
-                killer.RpcMurderPlayer(killer);
-                PlayerState.GetByPlayerId(killer.PlayerId).DeathReason = CustomDeathReason.Misfire;
-                info.DoKill = false;
-            }
-            return false;
+            DeathReasonTairo = OptionDeathReasonTairo.GetBool();
         }
+        public static OptionItem OptionDeathReasonTairo;
+        enum OptionName
+        {
+            DeathReasonTairo
+        }
+        public static bool DeathReasonTairo;
+        private static void SetupOptionItem()
+        {
+            OptionDeathReasonTairo = BooleanOptionItem.Create(RoleInfo, 10, OptionName.DeathReasonTairo, true, false);
+        }
+        public override CustomRoles GetFtResults(PlayerControl player) => CustomRoles.Crewmate;
     }
 }

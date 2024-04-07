@@ -17,6 +17,19 @@ public static class ReactorSystemTypeUpdateSystemPatch
             newReader.Recycle();
         }
         __state = amount;
+        if (!AmongUsClient.Instance.AmHost)
+        {
+            return true;
+        }
+        if (amount.HasBit(SwitchSystem.DamageSystem))
+        {
+            return true;
+        }
+
+        if (player.Is(CustomRoles.Slacker))
+        {
+            return false;
+        }
 
         if (player.GetRoleClass() is ISystemTypeUpdateHook systemTypeUpdateHook && !systemTypeUpdateHook.UpdateReactorSystem(__instance, amount))
         {

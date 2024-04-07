@@ -6,7 +6,7 @@ namespace TownOfHost
     {
         static Dictionary<byte, int> color = new();
         static Dictionary<byte, uint> level = new();
-        static Dictionary<byte, string> hat = new(), namep = new(), skin = new(), visor = new(), name = new();
+        static Dictionary<byte, string> hat = new(), namep = new(), skin = new(), visor = new(), name = new(), pet = new();
 
         /// <summary>
         /// プレイヤーのスキンをセーブ
@@ -20,13 +20,14 @@ namespace TownOfHost
             visor[player.PlayerId] = player.Data.DefaultOutfit.VisorId;
             namep[player.PlayerId] = player.Data.DefaultOutfit.NamePlateId;
             level[player.PlayerId] = player.Data.PlayerLevel;
+            pet[player.PlayerId] = player.Data.DefaultOutfit.PetId;
         }
         /// <summary>
-        /// プレイヤーのスキンをロード
+        /// プレイヤーのスキンをロード(n c h s v np lev pet)
         /// </summary>
-        public static (string, int, string, string, string, string, uint) Load(PlayerControl player)
+        public static (string, int, string, string, string, string, uint, string) Load(PlayerControl player)
         {
-            return (name[player.PlayerId], color[player.PlayerId], hat[player.PlayerId], skin[player.PlayerId], visor[player.PlayerId], namep[player.PlayerId], level[player.PlayerId]);
+            return (name[player.PlayerId], color[player.PlayerId], hat[player.PlayerId], skin[player.PlayerId], visor[player.PlayerId], namep[player.PlayerId], level[player.PlayerId], pet[player.PlayerId]);
         }
         /// <summary>
         /// 保存されたプレイヤーのデータを削除
@@ -40,6 +41,7 @@ namespace TownOfHost
             visor.Remove(player.PlayerId);
             namep.Remove(player.PlayerId);
             level.Remove(player.PlayerId);
+            pet.Remove(player.PlayerId);
         }
         /// <summary>
         /// 保存されたデータを全て削除
@@ -53,6 +55,7 @@ namespace TownOfHost
             visor.Clear();
             namep.Clear();
             level.Clear();
+            pet.Clear();
         }
     }
 }

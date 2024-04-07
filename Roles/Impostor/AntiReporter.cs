@@ -10,7 +10,7 @@ using TownOfHost.Roles.Core.Interfaces;
 using static TownOfHost.Translator;
 
 namespace TownOfHost.Roles.Impostor;
-public sealed class AntiReporter : RoleBase, IImpostor
+public sealed class AntiReporter : RoleBase, IImpostor, IUseTheShButton
 {
     public static readonly SimpleRoleInfo RoleInfo =
         SimpleRoleInfo.Create(
@@ -36,18 +36,20 @@ public sealed class AntiReporter : RoleBase, IImpostor
         ResetMeeting = OptionResetMeeting.GetBool();
         Resetse = OptionResetse.GetFloat();
     }
-    static bool megaphone;
-    static Dictionary<byte, float> mg = new(14);
+    bool megaphone;
+    Dictionary<byte, float> mg = new(14);
     static OptionItem OptionColldown;
     static OptionItem OptionMax;
     static OptionItem OptionResetMeeting;
     static OptionItem OptionResetse;
+    static OptionItem OptionOC;
     enum OptionName
     {
         Cooldown,
-        Maximum,
+        MaximumA,
         ResetMeeting,
-        Resetse
+        Resetse,
+        UOcShButton
     }
     static float Cooldown;
     static int Use;
@@ -57,22 +59,22 @@ public sealed class AntiReporter : RoleBase, IImpostor
     {
         OptionColldown = FloatOptionItem.Create(RoleInfo, 10, OptionName.Cooldown, new(1f, 1000f, 1f), 20f, false)
             .SetValueFormat(OptionFormat.Seconds);
-        OptionMax = IntegerOptionItem.Create(RoleInfo, 11, OptionName.Maximum, new(1, 1000, 1), 3, false)
+        OptionMax = IntegerOptionItem.Create(RoleInfo, 11, OptionName.MaximumA, new(1, 1000, 1), 3, false)
             .SetValueFormat(OptionFormat.Times);
         OptionResetMeeting = BooleanOptionItem.Create(RoleInfo, 12, OptionName.ResetMeeting, true, false);
         OptionResetse = FloatOptionItem.Create(RoleInfo, 13, OptionName.Resetse, new(0f, 999f, 1f), 20f, false)
-             .SetValueFormat(OptionFormat.Seconds);
+            .SetValueFormat(OptionFormat.Seconds);
+        OptionOC = BooleanOptionItem.Create(RoleInfo, 14, OptionName.UOcShButton, false, false);
     }
     private void SendRPC()
     {
-        using var sender = CreateSender(CustomRPC.SetAntiRc);
+        using var sender = CreateSender();
         sender.Writer.Write(Use);
         sender.Writer.Write(megaphone);
     }
 
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.SetAntiRc) return;
         Use = reader.ReadInt32();
         megaphone = reader.ReadBoolean();
     }
@@ -93,19 +95,25 @@ public sealed class AntiReporter : RoleBase, IImpostor
     public override void OnShapeshift(PlayerControl target)
     {
         var shapeshifting = !Is(target);
+        if (Use < 1 || !shapeshifting || UseOCButton) return;
+        Logger.Info(megaphone ? "やっぱ破壊するのやめるね！" : $"破壊準備ok", "AntiReporter");
+        megaphone = !megaphone;
         Utils.NotifyRoles();
-        if (Use < 1 || !shapeshifting) return;
-        if (megaphone == false)
-        {
-            megaphone = true;
-            Logger.Info($"破壊準備ok", "AntiReporter");
-        }
-        else
-        {
-            megaphone = false;
-            Logger.Info($"やっぱ破壊するのやめるね！", "AntiReporter");
-        }
     }
+    public void OnClick()
+    {
+        var target = Player.GetKillTarget();
+        if (target == null) return;
+        if (!CanUseAbilityButton() || mg.ContainsKey(target.PlayerId)) return;
+        mg.Add(target.PlayerId, 0f);
+        Use--;
+        Player.RpcProtectedMurderPlayer(target);
+        Logger.Info($"{target.name}のメガホンワンクリックだから間違えて壊しちゃった☆ ﾃﾍｯ", "AntiReporter");
+        SendRPC();
+        Utils.NotifyRoles();
+
+    }
+    public bool UseOCButton => OptionOC.GetBool();
     public override string GetProgressText(bool comms = false) => megaphone ? "<color=red>◆" : "" + Utils.ColorString(Use > 0 ? Color.red : Color.gray, $"({Use})");
     public override bool CancelReportDeadBody(PlayerControl reporter, GameData.PlayerInfo target)
     {
@@ -116,8 +124,15 @@ public sealed class AntiReporter : RoleBase, IImpostor
     {
         text = Resetse == 0 ? GetString("DestroyButtonText") : GetString("DisableButtonText");
         if (!megaphone) return false;
+        if (OptionOC.GetBool()) return false;
         return true;
     }
+    public override string GetAbilityButtonText()
+    {
+        if (!OptionOC.GetBool()) return "";
+        return Resetse == 0 ? GetString("DestroyButtonText") : GetString("DisableButtonText"); ;
+    }
+
     public override void OnStartMeeting()
     {
         if (ResetMeeting == true) mg.Clear();
@@ -129,7 +144,6 @@ public sealed class AntiReporter : RoleBase, IImpostor
 
         foreach (var (targetId, timer) in mg.ToArray())
         {
-            Logger.Info($"{targetId},{timer},{Resetse}", "mg");
             if (timer >= Resetse)
             {
                 mg.Remove(targetId);

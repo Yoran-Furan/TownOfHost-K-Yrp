@@ -20,7 +20,8 @@ public sealed class Warlock : RoleBase, IImpostor
             CustomRoleTypes.Impostor,
             1400,
             null,
-            "wa"
+            "wa",
+            from: From.TheOtherRoles
         );
     public Warlock(PlayerControl player)
     : base(
@@ -126,5 +127,6 @@ public sealed class Warlock : RoleBase, IImpostor
     public override void AfterMeetingTasks()
     {
         CursedPlayer = null;
+        IsCursed = false;
     }
 }

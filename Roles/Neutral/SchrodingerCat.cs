@@ -26,7 +26,8 @@ public sealed class SchrodingerCat : RoleBase, IAdditionalWinner, IDeathReasonSe
             SetupOptionItem,
             "sc",
             "#696969",
-            introSound: () => GetIntroSound(RoleTypes.Impostor)
+            introSound: () => GetIntroSound(RoleTypes.Impostor),
+            from: From.TOR_GM_Haoming_Edition
         );
     public SchrodingerCat(PlayerControl player)
     : base(
@@ -89,14 +90,7 @@ public sealed class SchrodingerCat : RoleBase, IAdditionalWinner, IDeathReasonSe
     /// </summary>
     public static void ApplyMadCatOptions(IGameOptions opt)
     {
-        if (Options.MadmateHasImpostorVision.GetBool())
-        {
-            opt.SetVision(true);
-        }
-        if (Options.MadmateCanSeeOtherVotes.GetBool())
-        {
-            opt.SetBool(BoolOptionNames.AnonymousVotes, false);
-        }
+        opt.SetVision(true);
     }
     public override bool OnCheckMurderAsTarget(MurderInfo info)
     {
@@ -105,6 +99,11 @@ public sealed class SchrodingerCat : RoleBase, IAdditionalWinner, IDeathReasonSe
         //自殺ならスルー
         if (info.IsSuicide) return true;
 
+        if (killer.Is(CustomRoles.GrimReaper))
+        {
+            return true;
+        }
+        else
         if (Team == TeamType.None)
         {
             info.CanKill = false;
@@ -155,6 +154,7 @@ public sealed class SchrodingerCat : RoleBase, IAdditionalWinner, IDeathReasonSe
             NameColorManager.Add(killer.PlayerId, Player.PlayerId, RoleInfo.RoleColorCode);
             NameColorManager.Add(Player.PlayerId, killer.PlayerId);
         }
+        Main.gamelog += $"\n{System.DateTime.Now.ToString("HH.mm.ss")} [SchrodingerCat]　" + Utils.GetPlayerColor(Player) + ":  " + string.Format(Translator.GetString("SchrodingerCat.Ch"), Utils.GetPlayerColor(killer, true) + $"(<b>{Utils.GetTrueRoleName(killer.PlayerId, false)}</b>)");
     }
     public override void OverrideTrueRoleName(ref Color roleColor, ref string roleText)
     {
@@ -220,16 +220,12 @@ public sealed class SchrodingerCat : RoleBase, IAdditionalWinner, IDeathReasonSe
         Team = team;
         if (AmongUsClient.Instance.AmHost)
         {
-            using var sender = CreateSender(CustomRPC.SetSchrodingerCatTeam);
+            using var sender = CreateSender();
             sender.Writer.Write((byte)team);
         }
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.SetSchrodingerCatTeam)
-        {
-            return;
-        }
         Team = (TeamType)reader.ReadByte();
     }
 

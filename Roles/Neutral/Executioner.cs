@@ -20,7 +20,8 @@ public sealed class Executioner : RoleBase, IAdditionalWinner
             SetupOptionItem,
             "exe",
             "#611c3a",
-            introSound: () => GetIntroSound(RoleTypes.Shapeshifter)
+            introSound: () => GetIntroSound(RoleTypes.Shapeshifter),
+            from: From.TownOfUs
         );
     public Executioner(PlayerControl player)
     : base(
@@ -104,10 +105,10 @@ public sealed class Executioner : RoleBase, IAdditionalWinner
     {
         if (!AmongUsClient.Instance.AmHost) return;
 
-        using var sender = CreateSender(CustomRPC.SetExecutionerTarget);
+        using var sender = CreateSender();
         sender.Writer.Write(TargetId);
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
         byte targetId = reader.ReadByte();
         TargetId = targetId;
@@ -159,6 +160,7 @@ public sealed class Executioner : RoleBase, IAdditionalWinner
     }
     public void ChangeRole()
     {
+        Main.gamelog += $"\n{System.DateTime.Now.ToString("HH.mm.ss")} [Executioner]　" + Utils.GetPlayerColor(Player) + ":  " + string.Format(Translator.GetString("Executioner.ch"), Utils.GetPlayerColor(TargetId, true), Translator.GetString("ChangeRolesAfterTargetKilled").Color(Utils.GetRoleColor(ChangeRolesAfterTargetKilled)));
         Player.RpcSetCustomRole(ChangeRolesAfterTargetKilled);
         Utils.NotifyRoles();
     }

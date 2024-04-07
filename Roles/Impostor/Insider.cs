@@ -18,7 +18,8 @@ namespace TownOfHost.Roles.Impostor
                 CustomRoleTypes.Impostor,
                 2800,
                 SetupOptionItem,
-                "ins"
+                "ins",
+                from: From.TownOfHost
             );
         public Insider(PlayerControl player)
         : base(
@@ -116,8 +117,22 @@ namespace TownOfHost.Roles.Impostor
             var mark = new StringBuilder(50);
 
             // 死亡したLoversのマーク追加
-            if (seen.Is(CustomRoles.Lovers) && !seer.Is(CustomRoles.Lovers) && KnowDeadRole(seen))
-                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.Lovers), "♡"));
+            if (seen.Is(CustomRoles.ALovers) && !seer.Is(CustomRoles.ALovers) && KnowDeadRole(seen))
+                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.ALovers), "♥"));
+            if (seen.Is(CustomRoles.BLovers) && !seer.Is(CustomRoles.BLovers) && KnowDeadRole(seen))
+                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.BLovers), "♥"));
+            if (seen.Is(CustomRoles.CLovers) && !seer.Is(CustomRoles.CLovers) && KnowDeadRole(seen))
+                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.CLovers), "♥"));
+            if (seen.Is(CustomRoles.DLovers) && !seer.Is(CustomRoles.DLovers) && KnowDeadRole(seen))
+                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.DLovers), "♥"));
+            if (seen.Is(CustomRoles.ELovers) && !seer.Is(CustomRoles.ELovers) && KnowDeadRole(seen))
+                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.ELovers), "♥"));
+            if (seen.Is(CustomRoles.FLovers) && !seer.Is(CustomRoles.FLovers) && KnowDeadRole(seen))
+                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.FLovers), "♥"));
+            if (seen.Is(CustomRoles.GLovers) && !seer.Is(CustomRoles.GLovers) && KnowDeadRole(seen))
+                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.GLovers), "♥"));
+            if (seen.Is(CustomRoles.MaLovers) && !seer.Is(CustomRoles.MaLovers) && KnowDeadRole(seen))
+                mark.Append(Utils.ColorString(Utils.GetRoleColor(CustomRoles.MaLovers), "♥"));
 
             if (canSeeImpostorAbilities)
             {

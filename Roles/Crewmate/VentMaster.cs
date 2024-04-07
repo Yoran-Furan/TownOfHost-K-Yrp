@@ -23,13 +23,15 @@ public sealed class VentMaster : RoleBase
         RoleInfo,
         player
     )
-    { }
+    {
+        CustomRoleManager.OnEnterVentOthers.Add(OnEnterVentOthers);
+    }
     public override void ApplyGameOptions(IGameOptions opt)
     {
         AURoleOptions.EngineerCooldown = 0;
         AURoleOptions.EngineerInVentMaxTime = 0;
     }
-    public static bool OnEnterVent2(PlayerPhysics physics, int ventId)
+    public static bool OnEnterVentOthers(PlayerPhysics physics, int ventId)
     {
         var user = physics.myPlayer;
         if (!user.Is(CustomRoles.VentMaster))

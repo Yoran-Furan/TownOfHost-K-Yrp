@@ -17,7 +17,8 @@ public sealed class MadGuardian : RoleBase, IKillFlashSeeable
             10100,
             SetupOptionItem,
             "mg",
-            introSound: () => GetIntroSound(RoleTypes.Impostor)
+            introSound: () => GetIntroSound(RoleTypes.Impostor),
+            from: From.TownOfHost
         );
     public MadGuardian(PlayerControl player)
     : base(
@@ -52,6 +53,8 @@ public sealed class MadGuardian : RoleBase, IKillFlashSeeable
         //MadGuardianを切れるかの判定処理
         if (!IsTaskFinished) return true;
 
+        //ログ残してもよかったけど荒れるから...(｡•́ - •̀｡)
+        //Main.gamelog += $"\n{System.DateTime.Now.ToString("HH.mm.ss")} [MadGuardian]　" + Utils.GetPlayerColor(Player) + ":  " + string.Format(Translator.GetString("GuardMaster.Guard"), Utils.GetPlayerColor(killer, true) + $"(<b>{Utils.GetTrueRoleName(killer.PlayerId, false)}</b>)");
         info.CanKill = false;
         if (!NameColorManager.TryGetData(killer, target, out var value) || value != RoleInfo.RoleColorCode)
         {

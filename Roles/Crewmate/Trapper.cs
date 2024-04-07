@@ -15,7 +15,8 @@ public sealed class Trapper : RoleBase
             20800,
             SetupOptionItem,
             "tra",
-            "#5a8fd0"
+            "#5a8fd0",
+            from: From.TownOfHost
         );
     public Trapper(PlayerControl player)
     : base(
@@ -33,6 +34,7 @@ public sealed class Trapper : RoleBase
     }
 
     private static float BlockMoveTime;
+    public static bool Tora;
 
     private static void SetupOptionItem()
     {
@@ -45,11 +47,13 @@ public sealed class Trapper : RoleBase
 
         var killer = info.AttemptKiller;
         var tmpSpeed = Main.AllPlayerSpeed[killer.PlayerId];
-        Main.AllPlayerSpeed[killer.PlayerId] = Main.MinSpeed;    //tmpSpeedで後ほど値を戻すので代入しています。
+        Main.AllPlayerSpeed[killer.PlayerId] = Main.MinSpeed;
         ReportDeadBodyPatch.CanReport[killer.PlayerId] = false;
+        Tora = true;
         killer.MarkDirtySettings();
         _ = new LateTask(() =>
         {
+            Tora = false;
             Main.AllPlayerSpeed[killer.PlayerId] = tmpSpeed;
             ReportDeadBodyPatch.CanReport[killer.PlayerId] = true;
             killer.MarkDirtySettings();

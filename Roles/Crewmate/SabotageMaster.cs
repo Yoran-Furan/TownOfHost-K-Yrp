@@ -19,7 +19,8 @@ public sealed class SabotageMaster : RoleBase, ISystemTypeUpdateHook
             SetupOptionItem,
             "sa",
             "#0000ff",
-            introSound: () => ShipStatus.Instance.SabotageSound
+            introSound: () => ShipStatus.Instance.SabotageSound,
+            from: From.TownOfHost
         );
     public SabotageMaster(PlayerControl player)
     : base(
@@ -184,6 +185,7 @@ public sealed class SabotageMaster : RoleBase, ISystemTypeUpdateHook
             ShipStatusUpdateSystemPatch.CheckAndOpenDoorsRange(shipStatus, amount, 76, 78);
             ShipStatusUpdateSystemPatch.CheckAndOpenDoorsRange(shipStatus, amount, 68, 70);
             ShipStatusUpdateSystemPatch.CheckAndOpenDoorsRange(shipStatus, amount, 83, 84);
+            ShipStatusUpdateSystemPatch.CheckAndOpenDoorsRange(shipStatus, amount, 79, 82);
         }
         else if (mapId == 5)
         {

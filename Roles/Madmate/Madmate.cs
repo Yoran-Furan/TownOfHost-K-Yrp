@@ -16,7 +16,8 @@ public sealed class Madmate : RoleBase, IKillFlashSeeable, IDeathReasonSeeable
             10000,
             null,
             "mm",
-            introSound: () => GetIntroSound(RoleTypes.Impostor)
+            introSound: () => GetIntroSound(RoleTypes.Impostor),
+            from: From.au_libhalt_net
         );
     public Madmate(PlayerControl player)
     : base(

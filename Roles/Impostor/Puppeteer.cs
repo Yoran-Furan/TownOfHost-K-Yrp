@@ -20,7 +20,8 @@ public sealed class Puppeteer : RoleBase, IImpostor
             CustomRoleTypes.Impostor,
             2000,
             null,
-            "pup"
+            "pup",
+            from: From.TownOfHost
         );
     public Puppeteer(PlayerControl player)
     : base(
@@ -42,15 +43,13 @@ public sealed class Puppeteer : RoleBase, IImpostor
 
     private void SendRPC(byte targetId, byte typeId)
     {
-        using var sender = CreateSender(CustomRPC.SyncPuppet);
+        using var sender = CreateSender();
 
         sender.Writer.Write(typeId);
         sender.Writer.Write(targetId);
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.SyncPuppet) return;
-
         var typeId = reader.ReadByte();
         var targetId = reader.ReadByte();
 
@@ -138,6 +137,11 @@ public sealed class Puppeteer : RoleBase, IImpostor
     public bool OverrideKillButtonText(out string text)
     {
         text = GetString("PuppeteerOperateButtonText");
+        return true;
+    }
+    public bool OverrideKillButton(out string text)
+    {
+        text = "Puppeteer_Kill";
         return true;
     }
 }

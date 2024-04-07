@@ -28,10 +28,13 @@ namespace TownOfHost
 
         // 任意情報 (空・nullを許容する または、ほとんど初期値で問題ない値)
         public Color NameColor { get; protected set; }
+        public string NameColorCode { get; protected set; }
+        public string Fromtext { get; protected set; }
         public OptionFormat ValueFormat { get; protected set; }
         public CustomGameMode GameMode { get; protected set; }
         public bool IsHeader { get; protected set; }
         public bool IsHidden { get; protected set; }
+        public bool HideValue { get; protected set; }
         public Dictionary<string, string> ReplacementDictionary
         {
             get => _replacementDictionary;
@@ -64,8 +67,7 @@ namespace TownOfHost
         // - 直接的な呼び出し
         public event EventHandler<UpdateValueEventArgs> UpdateValueEvent;
 
-        // コンストラクタ
-        public OptionItem(int id, string name, int defaultValue, TabGroup tab, bool isSingleValue)
+        public OptionItem(int id, string name, int defaultValue, TabGroup tab, bool isSingleValue, string From = "", bool hidevalue = false)
         {
             // 必須情報の設定
             Id = id;
@@ -75,7 +77,10 @@ namespace TownOfHost
             IsSingleValue = isSingleValue;
 
             // 任意情報の初期値設定
+            HideValue = hidevalue;
+            Fromtext = From;
             NameColor = Color.white;
+            NameColorCode = "#ffffff";
             ValueFormat = OptionFormat.None;
             GameMode = CustomGameMode.All;
             IsHeader = false;
@@ -101,7 +106,6 @@ namespace TownOfHost
                     AllValues[i] = DefaultValue;
                 }
             }
-
             if (_fastOptions.TryAdd(id, this))
             {
                 _allOptions.Add(this);
@@ -111,7 +115,7 @@ namespace TownOfHost
 #if DEBUG
                 IdDuplicated = true;
 #endif
-                Logger.Error($"ID:{id}が重複しています name:{name}", "OptionItem");
+                Logger.Error($"ID:{id}が重複しています name:{name},{_fastOptions[id].Name}", "OptionItem");
             }
         }
 
@@ -123,6 +127,7 @@ namespace TownOfHost
         }
 
         public OptionItem SetColor(Color value) => Do(i => i.NameColor = value);
+        public OptionItem SetColorcode(string value) => Do(i => i.NameColorCode = value);
         public OptionItem SetValueFormat(OptionFormat value) => Do(i => i.ValueFormat = value);
         public OptionItem SetGameMode(CustomGameMode value) => Do(i => i.GameMode = value);
         public OptionItem SetHeader(bool value) => Do(i => i.IsHeader = value);
@@ -152,7 +157,9 @@ namespace TownOfHost
         {
             return disableColor ?
                 Translator.GetString(Name, ReplacementDictionary) :
-                Utils.ColorString(NameColor, Translator.GetString(Name, ReplacementDictionary));
+                NameColor != Color.white ?
+                Utils.ColorString(NameColor, Translator.GetString(Name, ReplacementDictionary)) :
+                $"<color={NameColorCode}>" + Translator.GetString(Name, ReplacementDictionary) + "</color>";
         }
         public virtual bool GetBool() => CurrentValue != 0 && (Parent == null || Parent.GetBool());
         public virtual int GetInt() => CurrentValue;
@@ -180,7 +187,7 @@ namespace TownOfHost
         {
             if (OptionBehaviour is not null and StringOption opt)
             {
-                opt.TitleText.text = GetName();
+                opt.TitleText.text = GetName() + Fromtext;
                 opt.ValueText.text = GetString();
                 opt.oldValue = opt.Value = CurrentValue;
             }
@@ -278,8 +285,10 @@ namespace TownOfHost
     {
         MainSettings,
         ImpostorRoles,
+        MadmateRoles,
         CrewmateRoles,
         NeutralRoles,
+        Combinations,
         Addons
     }
     public enum OptionFormat

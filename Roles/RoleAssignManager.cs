@@ -322,7 +322,13 @@ role.GetRoleAssignInfo()?.AssignRoleType ?? role.GetCustomRoleTypes();
             int assignUnitCount = role.GetRoleAssignInfo()?.AssignUnitCount ??
                 role switch
                 {
-                    CustomRoles.Lovers => 2,
+                    CustomRoles.ALovers => 2,
+                    CustomRoles.BLovers => 2,
+                    CustomRoles.CLovers => 2,
+                    CustomRoles.DLovers => 2,
+                    CustomRoles.ELovers => 2,
+                    CustomRoles.FLovers => 2,
+                    CustomRoles.GLovers => 2,
                     _ => 1,
                 };
             return maximumCount / assignUnitCount;
@@ -335,7 +341,13 @@ role.GetRoleAssignInfo()?.AssignRoleType ?? role.GetCustomRoleTypes();
             => role.GetRoleAssignInfo()?.AssignUnitRoles ??
             role switch
             {
-                CustomRoles.Lovers => new CustomRoles[2] { CustomRoles.Lovers, CustomRoles.Lovers },
+                CustomRoles.ALovers => new CustomRoles[2] { CustomRoles.ALovers, CustomRoles.ALovers },
+                CustomRoles.BLovers => new CustomRoles[2] { CustomRoles.BLovers, CustomRoles.BLovers },
+                CustomRoles.CLovers => new CustomRoles[2] { CustomRoles.CLovers, CustomRoles.CLovers },
+                CustomRoles.DLovers => new CustomRoles[2] { CustomRoles.DLovers, CustomRoles.DLovers },
+                CustomRoles.ELovers => new CustomRoles[2] { CustomRoles.ELovers, CustomRoles.ELovers },
+                CustomRoles.FLovers => new CustomRoles[2] { CustomRoles.FLovers, CustomRoles.FLovers },
+                CustomRoles.GLovers => new CustomRoles[2] { CustomRoles.GLovers, CustomRoles.GLovers },
                 _ => new CustomRoles[1] { role },
             };
         public static bool IsPresent(this CustomRoles role) => AssignRoleList.Any(x => x == role);

@@ -25,12 +25,13 @@ public sealed class Bakery : RoleBase
         player
     )
     { }
-    public override void OnStartMeeting()
+    public override string MeetingMeg()
     {
         if (Player.IsAlive())
         {
-            string BakeryTitle = $"{GetString("Message.BakeryTitle")}";
-            Utils.SendMessage(GetString("Message.Bakery1"), title: "<color=#e65151>" + BakeryTitle);
+            string BakeryTitle = $"<size=90%><color=#e65151>{GetString("Message.BakeryTitle")}</size></color>";
+            return BakeryTitle + "\n<size=70%>" + GetString("Message.Bakery1") + "</size>\n";//, title: "<color=#e65151>" + BakeryTitle);
         }
+        return "";
     }
 }

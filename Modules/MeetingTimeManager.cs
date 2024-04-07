@@ -89,5 +89,11 @@ namespace TownOfHost.Modules
             }
             Logger.Info($"DiscussionTime:{DiscussionTime}, VotingTime{VotingTime}", "MeetingTimeManager.OnReportDeadBody");
         }
+
+        public static void Balancer(int time)
+        {
+            DiscussionTime = 0;
+            VotingTime = time;
+        }
     }
 }

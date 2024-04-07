@@ -14,7 +14,8 @@ public sealed class Lighter : RoleBase
             20100,
             SetupOptionItem,
             "li",
-            "#eee5be"
+            "#eee5be",
+            from: From.TheOtherRoles
         );
     public Lighter(PlayerControl player)
     : base(

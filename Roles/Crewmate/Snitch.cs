@@ -18,7 +18,8 @@ public class Snitch : RoleBase
             20500,
             SetupOptionItem,
             "sn",
-            "#b8fb4f"
+            "#b8fb4f",
+            from: From.TheOtherRoles
         );
     public Snitch(PlayerControl player)
     : base(

@@ -105,7 +105,7 @@ namespace TownOfHost
                 }
             }
             sr.Close();
-            Logger.Info("バージョン情報がない..だと!?", "OptionsManager");
+            Logger.Info("バージョン情報ないなら帰れにゃ ﾊﾞｲﾊﾞｲ\\(^^)", "OptionsManager");
             try
             {
                 File.WriteAllText(OPTIONS_FILE_PATH, DEFAULT);

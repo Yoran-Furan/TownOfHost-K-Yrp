@@ -22,7 +22,7 @@ namespace TownOfHost
         {
             var ab = false;
             foreach (var (role, info) in Roles.Core.CustomRoleManager.AllRolesInfo)
-                if (info.IsEnable && info.CountType != CountTypes.Crew && info.CountType != CountTypes.Impostor)
+                if (info.IsEnable && info.CountType is not CountTypes.Crew and not CountTypes.Impostor)
                     ab = true;
             return ab;
         }

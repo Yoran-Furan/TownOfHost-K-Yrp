@@ -22,7 +22,8 @@ public sealed class Mare : RoleBase, IImpostor
             assignInfo: new(CustomRoles.Mare, CustomRoleTypes.Impostor)
             {
                 IsInitiallyAssignableCallBack = () => ShipStatus.Instance.Systems.TryGetValue(SystemTypes.Electrical, out var systemType) && systemType.TryCast<SwitchSystem>(out _),  // 停電が存在する
-            }
+            },
+            from: From.TownOfHost
         );
     public Mare(PlayerControl player)
     : base(
@@ -53,7 +54,7 @@ public sealed class Mare : RoleBase, IImpostor
     public static void SetupCustomOption()
     {
         OptionSpeedInLightsOut = FloatOptionItem.Create(RoleInfo, 10, OptionName.MareAddSpeedInLightsOut, new(0.1f, 0.5f, 0.1f), 0.3f, false);
-        OptionKillCooldownInLightsOut = FloatOptionItem.Create(RoleInfo, 11, OptionName.MareKillCooldownInLightsOut, new(2.5f, 180f, 2.5f), 15f, false)
+        OptionKillCooldownInLightsOut = FloatOptionItem.Create(RoleInfo, 11, OptionName.MareKillCooldownInLightsOut, new(0f, 180f, 2.5f), 15f, false)
             .SetValueFormat(OptionFormat.Seconds);
     }
     public bool CanUseKillButton() => IsActivateKill;
@@ -83,13 +84,11 @@ public sealed class Mare : RoleBase, IImpostor
     }
     public void SendRPC()
     {
-        using var sender = CreateSender(CustomRPC.MareSync);
+        using var sender = CreateSender();
         sender.Writer.Write(IsActivateKill);
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.MareSync) return;
-
         IsActivateKill = reader.ReadBoolean();
     }
 

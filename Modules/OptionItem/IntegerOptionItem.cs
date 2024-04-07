@@ -9,17 +9,25 @@ namespace TownOfHost
         public IntegerValueRule Rule;
 
         // コンストラクタ
-        public IntegerOptionItem(int id, string name, int defaultValue, TabGroup tab, bool isSingleValue, IntegerValueRule rule)
-        : base(id, name, rule.GetNearestIndex(defaultValue), tab, isSingleValue)
+        public IntegerOptionItem(int id, string name, int defaultValue, TabGroup tab, bool isSingleValue, IntegerValueRule rule, string From = "", bool HideValue = false)
+        : base(id, name, rule.GetNearestIndex(defaultValue), tab, isSingleValue, From, HideValue)
         {
             Rule = rule;
         }
         public static IntegerOptionItem Create(
-            int id, string name, IntegerValueRule rule, int defaultValue, TabGroup tab, bool isSingleValue
+            int id, string name, IntegerValueRule rule, int defaultValue, TabGroup tab, bool isSingleValue, bool HideValue = false
         )
         {
             return new IntegerOptionItem(
-                id, name, defaultValue, tab, isSingleValue, rule
+                id, name, defaultValue, tab, isSingleValue, rule, HideValue: HideValue
+            );
+        }
+        public static IntegerOptionItem Create(
+            int id, string name, IntegerValueRule rule, int defaultValue, TabGroup tab, bool isSingleValue, string From, bool HideValue = false
+        )
+        {
+            return new IntegerOptionItem(
+                id, name, defaultValue, tab, isSingleValue, rule, From, HideValue
             );
         }
         public static IntegerOptionItem Create(

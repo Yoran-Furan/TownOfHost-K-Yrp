@@ -27,6 +27,7 @@ public sealed class TeleportKiller : RoleBase, IImpostor
         player
     )
     {
+        CustomRoleManager.OnEnterVentOthers.Add(OnEnterVentOthers);
         KillCooldown = OptionKillCoolDown.GetFloat();
         Cooldown = OptionCoolDown.GetFloat();
         Maximum = OptionmMaximum.GetFloat();
@@ -38,6 +39,7 @@ public sealed class TeleportKiller : RoleBase, IImpostor
         Dokkaaaan = OptionDokkaaaan.GetBool();
         //LeaveSkin = OptionLeaveSkin.GetBool();
         TpKillCooldownReset = OptionTpKillCooldownReset.GetBool();
+        DeathReason = OptionDeathReason.GetBool();
         usecount = 0;
         TeleportandKill = new();
         LadderPatch.Ladder.Clear();
@@ -57,7 +59,8 @@ public sealed class TeleportKiller : RoleBase, IImpostor
         //ZiplineFall,
         Dokkaaaan,
         //LeaveSkin,
-        TpKillCooldownReset
+        TpKillCooldownReset,
+        TKChangeDeathReason
     }
     static OptionItem OptionKillCoolDown;
     static OptionItem OptionCoolDown;
@@ -71,10 +74,11 @@ public sealed class TeleportKiller : RoleBase, IImpostor
     static OptionItem OptionDokkaaaan;
     //static OptionItem OptionLeaveSkin;
     static OptionItem OptionTpKillCooldownReset;
+    static OptionItem OptionDeathReason;
     static float KillCooldown;
     static float Cooldown;
     static float Maximum;
-    static int usecount;
+    int usecount;
     static float Duration;
     static bool Ventgaaa; //↓ターゲットが使ってると自爆する系
     static bool PlatformFall;
@@ -83,13 +87,14 @@ public sealed class TeleportKiller : RoleBase, IImpostor
     static bool Dokkaaaan; //ターゲットが死んでいると自爆する
     //static bool LeaveSkin;
     static bool TpKillCooldownReset;
-    static List<byte> TeleportandKill;
-    static bool isAnimation;
-    static (Vector2, Vector2, float) AnimationData;
+    static bool DeathReason;
+    List<byte> TeleportandKill;
+    bool isAnimation;
+    (Vector2, Vector2, float) AnimationData;
     static Dictionary<byte, int> CheckVentD = new();
     private static void SetupOptionItem()
     {
-        OptionKillCoolDown = FloatOptionItem.Create(RoleInfo, 10, OptionName.KillCooldown, new(2.5f, 180f, 2.5f), 30f, false)
+        OptionKillCoolDown = FloatOptionItem.Create(RoleInfo, 10, OptionName.KillCooldown, new(0f, 180f, 2.5f), 30f, false)
             .SetValueFormat(OptionFormat.Seconds);
         OptionCoolDown = FloatOptionItem.Create(RoleInfo, 11, OptionName.Cooldown, new(2.5f, 180f, 2.5f), 30f, false)
             .SetValueFormat(OptionFormat.Seconds);
@@ -105,23 +110,22 @@ public sealed class TeleportKiller : RoleBase, IImpostor
         OptionDokkaaaan = BooleanOptionItem.Create(RoleInfo, 19, OptionName.Dokkaaaan, false, false).SetParent(OptionJibakukei);
         //OptionLeaveSkin = BooleanOptionItem.Create(RoleInfo, 15, OptionName.LeaveSkin, false, false);
         OptionTpKillCooldownReset = BooleanOptionItem.Create(RoleInfo, 20, OptionName.TpKillCooldownReset, false, false);
+        OptionDeathReason = BooleanOptionItem.Create(RoleInfo, 21, OptionName.TKChangeDeathReason, false, false);
     }
 
     public bool CanBeLastImpostor { get; } = false;
     private void SendRPC()
     {
-        using var sender = CreateSender(CustomRPC.SetTKc);
+        using var sender = CreateSender();
         sender.Writer.Write(usecount);
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.SetTKc) return;
-
         usecount = reader.ReadInt32();
     }
     public override void OnShapeshift(PlayerControl target)
     {
-        if (!AmongUsClient.Instance.AmHost || Player.PlayerId == target.PlayerId || (!target.IsAlive() && !Dokkaaaan) || (usecount >= Maximum && Maximum != 0)) return;
+        if (!AmongUsClient.Instance.AmHost || Is(target) || (!target.IsAlive() && !Dokkaaaan) || (usecount >= Maximum && Maximum != 0)) return;
         usecount++;
         SendRPC();
         Logger.Info($"Player: {Player.name},Target: {target.name}, count: {usecount}", "TeleportKiller");
@@ -141,7 +145,7 @@ public sealed class TeleportKiller : RoleBase, IImpostor
                 if ((target.inVent || target.MyPhysics.Animations.IsPlayingEnterVentAnimation())
                         && Ventgaaa)
                 {
-                    Player.RpcSnapTo(target.transform.position);
+                    Player.RpcSnapToForced(target.transform.position);
                     PlayerState.GetByPlayerId(Player.PlayerId).DeathReason = CustomDeathReason.Bombed;
                     Player.RpcMurderPlayer(Player, true);
                     Logger.Info($"ターゲットがベントに入ってたせいでTPした時ベントに体があああ(自爆) Killer:{Player.name} Target:{target.name}", "TeleportKiller");
@@ -183,7 +187,7 @@ public sealed class TeleportKiller : RoleBase, IImpostor
         return true;
     }
 
-    public static void TeleportKill(PlayerControl Player, PlayerControl target)
+    public void TeleportKill(PlayerControl Player, PlayerControl target)
     {
         //キラーのTP
         var p = Player.transform.position;
@@ -197,18 +201,19 @@ public sealed class TeleportKiller : RoleBase, IImpostor
         }
         else
         {
-            Player.RpcSnapTo(target.transform.position);
+            Player.RpcSnapToForced(target.transform.position);
         }
         if (check)
         {
             //ターゲットのTP
-            target.RpcSnapTo(p);
+            target.RpcSnapToForced(p);
             _ = new LateTask(() =>
             {
                 if (!target.inVent && !target.MyPhysics.Animations.IsPlayingEnterVentAnimation())
                 {
                     if (target.GetCustomRole().IsImpostor()) return;
-                    PlayerState.GetByPlayerId(target.PlayerId).DeathReason = CustomDeathReason.Kill;
+                    PlayerState.GetByPlayerId(target.PlayerId).DeathReason = DeathReason ? CustomDeathReason.TeleportKill : CustomDeathReason.Kill;
+                    target.SetRealKiller(Player);
                     target.RpcMurderPlayer(target, true);
                     if (TpKillCooldownReset) Player.SetKillCooldown(KillCooldown);
                 }
@@ -244,7 +249,7 @@ public sealed class TeleportKiller : RoleBase, IImpostor
             var (start, goal, t) = AnimationData;
             t += Time.deltaTime / 2.0f;
             AnimationData.Item3 = (t > 1.0f) ? 1.0f : t; // 上限は1.0
-            Player.RpcSnapTo(Vector2.Lerp(start, goal, t));
+            Player.RpcSnapToForced(Vector2.Lerp(start, goal, t));
             if (t >= 1)
             {
                 isAnimation = false;
@@ -255,8 +260,12 @@ public sealed class TeleportKiller : RoleBase, IImpostor
         }
     }
 
-    public static void CheckVent(PlayerControl pc, int id) => CheckVentD[pc.PlayerId] = id;
 
+    public static bool OnEnterVentOthers(PlayerPhysics physics, int id)
+    {
+        CheckVentD[physics.myPlayer.PlayerId] = id;
+        return true;
+    }
     public override string GetProgressText(bool comms = false) => Maximum == 0 ? "" : Utils.ColorString(Maximum >= usecount ? Color.red : Color.gray, $"({Maximum - usecount})");
 
     public float CalculateKillCooldown() => KillCooldown;

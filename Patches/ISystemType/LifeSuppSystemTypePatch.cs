@@ -16,6 +16,18 @@ public static class LifeSuppSystemUpdateSystemPatch
             amount = newReader.ReadByte();
             newReader.Recycle();
         }
+        if (!AmongUsClient.Instance.AmHost)
+        {
+            return true;
+        }
+        if (amount.HasBit(SwitchSystem.DamageSystem))
+        {
+            return true;
+        }
+        if (player.Is(CustomRoles.Slacker))
+        {
+            return false;
+        }
 
         if (player.GetRoleClass() is ISystemTypeUpdateHook systemTypeUpdateHook && !systemTypeUpdateHook.UpdateLifeSuppSystem(__instance, amount))
         {

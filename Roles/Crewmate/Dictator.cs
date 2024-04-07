@@ -16,7 +16,8 @@ public sealed class Dictator : RoleBase
             20900,
             null,
             "dic",
-            "#df9b00"
+            "#df9b00",
+            from: From.TownOfHost
         );
     public Dictator(PlayerControl player)
     : base(

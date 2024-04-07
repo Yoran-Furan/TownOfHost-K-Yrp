@@ -7,21 +7,27 @@ namespace TownOfHost
     public static class Zoom
     {
         public static int size = (int)HudManager.Instance.UICamera.orthographicSize;
+        private static int last = 0;
         public static void Postfix()
         {
-            if ((GameStates.IsFreePlay && Main.UseZoom.Value) || (GameStates.IsInGame && !PlayerControl.LocalPlayer.IsAlive() && PlayerControl.LocalPlayer.CanMove & GameStates.IsInTask && Main.UseZoom.Value))
+            if (Main.UseZoom.Value && (GameStates.IsFreePlay || (GameStates.IsInGame && !PlayerControl.LocalPlayer.IsAlive() && GameStates.IsInTask)))
             {
+                //チャットなど開いていて、動けない状態 or ｴﾃﾞｨｯﾄﾓｰﾄﾞ なら操作を無効にする
+                if (!PlayerControl.LocalPlayer.CanMove || (GameStates.IsFreePlay && Main.EditMode)) return;
+
                 if (Input.mouseScrollDelta.y < 0) size += (int)1.5;
                 if (Input.mouseScrollDelta.y > 0 && size > 1.5) size -= (int)1.5;
-                HudManager.Instance.UICamera.orthographicSize = size;
-                Camera.main.orthographicSize = size;
             }
             else
+                size = 3;
+
+            //位置を調整
+            if (last != size)
             {
-                HudManager.Instance.UICamera.orthographicSize = 3.0f;
-                Camera.main.orthographicSize = 3.0f;
-                HudManager.Instance.Chat.transform.localScale = Vector3.one; //チャットの位置を戻す 参考: TOH_Y https://github.com/Yumenopai/TownOfHost_Y/blob/main/Modules/Zoom.cs
-                if (GameStates.IsMeeting) MeetingHud.Instance.transform.localScale = Vector3.one;
+                HudManager.Instance.UICamera.orthographicSize = size;
+                Camera.main.orthographicSize = size;
+                ResolutionManager.ResolutionChanged.Invoke((float)Screen.width / Screen.height, Screen.width, Screen.height, Screen.fullScreen);
+                last = size;
             }
         }
     }

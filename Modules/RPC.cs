@@ -19,33 +19,15 @@ namespace TownOfHost
         EndGame,
         PlaySound,
         SetCustomRole,
-        SetBountyTarget,
-        WitchSync,
-        SetSheriffShotLimit,
-        SetDousedPlayer,
         SetNameColorData,
-        SniperSync,
-        SetLoversPlayers,
-        SetExecutionerTarget,
-        SetCurrentDousingTarget,
-        SetEvilTrackerTarget,
         SetRealKiller,
-        SyncPuppet,
-        SetSchrodingerCatTeam,
-        StealthDarken,
-        EvilHackerCreateMurderNotify,
-        PenguinSync,
-        MareSync,
-        SyncPlagueDoctor,
-        KillerCount,
+        SetLoversPlayers,
+        SetMaLovers,
         SyncRoomTimer,
         SyncYomiage,
-        SetFTc,
-        SetFTtarget,
-        SetAntiRc,
-        SetBbc,
-        SetTKc,
-        SetChefTarget
+        Guess,
+        GuessKill,
+        CustomRoleSync
     }
     public enum Sounds
     {
@@ -72,9 +54,10 @@ namespace TownOfHost
                     Logger.Info("役職:" + __instance.GetRealName() + " => " + role, "SetRole");
                     break;
                 case RpcCalls.SendChat:
-                    string text = subReader.ReadString();
-                    Logger.Info($"{__instance.GetNameWithRole()}:{text}", "SendChat");
-                    ChatCommands.OnReceiveChat(__instance, text);
+                    var text = subReader.ReadString();
+                    Logger.Info($"{__instance.GetNameWithRole()}:{text}", "ReceiveChat");
+                    ChatCommands.OnReceiveChat(__instance, text, out var canceled);
+                    if (canceled) return false;
                     break;
                 case RpcCalls.StartMeeting:
                     PlayerControl p = Utils.GetPlayerById(subReader.ReadByte());
@@ -151,10 +134,40 @@ namespace TownOfHost
                     NameColorManager.ReceiveRPC(reader);
                     break;
                 case CustomRPC.SetLoversPlayers:
-                    Main.LoversPlayers.Clear();
-                    int count = reader.ReadInt32();
-                    for (int i = 0; i < count; i++)
-                        Main.LoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
+                    Main.ALoversPlayers.Clear();
+                    Main.BLoversPlayers.Clear();
+                    Main.CLoversPlayers.Clear();
+                    Main.DLoversPlayers.Clear();
+                    Main.ELoversPlayers.Clear();
+                    Main.FLoversPlayers.Clear();
+                    Main.GLoversPlayers.Clear();
+                    int Acount = reader.ReadInt32();
+                    int Bcount = reader.ReadInt32();
+                    int Ccount = reader.ReadInt32();
+                    int Dcount = reader.ReadInt32();
+                    int Ecount = reader.ReadInt32();
+                    int Fcount = reader.ReadInt32();
+                    int Gcount = reader.ReadInt32();
+                    for (int i = 0; i < Acount; i++)
+                        Main.ALoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
+                    for (int i = 0; i < Bcount; i++)
+                        Main.BLoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
+                    for (int i = 0; i < Ccount; i++)
+                        Main.CLoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
+                    for (int i = 0; i < Dcount; i++)
+                        Main.DLoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
+                    for (int i = 0; i < Ecount; i++)
+                        Main.ELoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
+                    for (int i = 0; i < Fcount; i++)
+                        Main.FLoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
+                    for (int i = 0; i < Gcount; i++)
+                        Main.GLoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
+                    break;
+                case CustomRPC.SetMaLovers:
+                    Main.MaMaLoversPlayers.Clear();
+                    int Macount = reader.ReadInt32();
+                    for (int i = 0; i < Macount; i++)
+                        Main.MaMaLoversPlayers.Add(Utils.GetPlayerById(reader.ReadByte()));
                     break;
                 case CustomRPC.SetRealKiller:
                     byte targetId = reader.ReadByte();
@@ -168,6 +181,12 @@ namespace TownOfHost
                     else _ = GameStartManagerPatch.SetTimer(0);
                     Logger.Info($"{timer - 0.5f}", "settimer");
                     break;
+                case CustomRPC.Guess:
+                    GuessManager.ReceiveRPC(reader, __instance);
+                    break;
+                case CustomRPC.GuessKill:
+                    GuessManager.RpcClientGuess(Utils.GetPlayerById(reader.ReadByte()));
+                    break;
                 case CustomRPC.SyncYomiage:
                     if (Main.SyncYomiage.Value)
                     {
@@ -176,8 +195,8 @@ namespace TownOfHost
                             ChatCommands.YomiageS[reader.ReadInt32()] = reader.ReadString();
                     }
                     break;
-                default:
-                    CustomRoleManager.DispatchRpc(reader, rpcType);
+                case CustomRPC.CustomRoleSync:
+                    CustomRoleManager.DispatchRpc(reader);
                     break;
             }
         }
@@ -281,14 +300,13 @@ namespace TownOfHost
         public static void SetCustomRole(byte targetId, CustomRoles role)
         {
             RoleBase roleClass = CustomRoleManager.GetByPlayerId(targetId);
-            if (roleClass != null)
+            if (roleClass != null && role < CustomRoles.NotAssigned)
             {
                 PlayerControl player = roleClass.Player;
                 roleClass.Dispose();
                 CustomRoleManager.CreateInstance(role, player);
             }
-
-            if (role < CustomRoles.NotAssigned)
+            else if (role < CustomRoles.NotAssigned)
             {
                 PlayerState.GetByPlayerId(targetId).SetMainRole(role);
                 CustomRoleManager.CreateInstance(role, Utils.GetPlayerById(targetId));
@@ -303,8 +321,28 @@ namespace TownOfHost
         {
             if (!AmongUsClient.Instance.AmHost) return;
             MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetLoversPlayers, SendOption.Reliable, -1);
-            writer.Write(Main.LoversPlayers.Count);
-            foreach (PlayerControl lp in Main.LoversPlayers)
+            writer.Write(Main.ALoversPlayers.Count);
+            writer.Write(Main.BLoversPlayers.Count);
+            writer.Write(Main.CLoversPlayers.Count);
+            writer.Write(Main.DLoversPlayers.Count);
+            writer.Write(Main.ELoversPlayers.Count);
+            writer.Write(Main.FLoversPlayers.Count);
+            writer.Write(Main.GLoversPlayers.Count);
+            foreach (PlayerControl lp in Main.ALoversPlayers) writer.Write(lp.PlayerId);
+            foreach (PlayerControl lp in Main.BLoversPlayers) writer.Write(lp.PlayerId);
+            foreach (PlayerControl lp in Main.CLoversPlayers) writer.Write(lp.PlayerId);
+            foreach (PlayerControl lp in Main.DLoversPlayers) writer.Write(lp.PlayerId);
+            foreach (PlayerControl lp in Main.ELoversPlayers) writer.Write(lp.PlayerId);
+            foreach (PlayerControl lp in Main.FLoversPlayers) writer.Write(lp.PlayerId);
+            foreach (PlayerControl lp in Main.GLoversPlayers) writer.Write(lp.PlayerId);
+            AmongUsClient.Instance.FinishRpcImmediately(writer);
+        }
+        public static void SyncMaLoversPlayers()
+        {
+            if (!AmongUsClient.Instance.AmHost) return;
+            MessageWriter writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.SetMaLovers, SendOption.Reliable, -1);
+            writer.Write(Main.MaMaLoversPlayers.Count);
+            foreach (PlayerControl lp in Main.MaMaLoversPlayers)
                 writer.Write(lp.PlayerId);
             AmongUsClient.Instance.FinishRpcImmediately(writer);
         }

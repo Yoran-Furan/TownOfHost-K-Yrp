@@ -19,7 +19,8 @@ public sealed class MadSnitch : RoleBase, IKillFlashSeeable, IDeathReasonSeeable
             10200,
             SetupOptionItem,
             "msn",
-            introSound: () => GetIntroSound(RoleTypes.Impostor)
+            introSound: () => GetIntroSound(RoleTypes.Impostor),
+            from: From.TownOfHost
         );
     public MadSnitch(PlayerControl player)
     : base(

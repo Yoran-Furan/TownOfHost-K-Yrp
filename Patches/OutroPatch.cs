@@ -24,7 +24,7 @@ namespace TownOfHost
             GameStates.InGame = false;
 
             Logger.Info("-----------ゲーム終了-----------", "Phase");
-            if (!GameStates.IsModHost) return;
+            if (!GameStates.IsModHost || !AmongUsClient.Instance.AmHost) return;
 
             SummaryText = new();
             foreach (var id in PlayerState.AllPlayerStates.Keys)
@@ -32,17 +32,21 @@ namespace TownOfHost
 
             var sb = new StringBuilder(GetString("KillLog"));
             sb.Append("<size=70%>");
+
             foreach (var kvp in PlayerState.AllPlayerStates.OrderBy(x => x.Value.RealKiller.Item1.Ticks))
             {
                 var date = kvp.Value.RealKiller.Item1;
                 if (date == DateTime.MinValue) continue;
                 var killerId = kvp.Value.GetRealKiller();
                 var targetId = kvp.Key;
-                sb.Append($"\n{date:T} {Main.AllPlayerNames[targetId]}({Utils.GetTrueRoleName(targetId, false)}{Utils.GetSubRolesText(targetId)}) [{Utils.GetVitalText(kvp.Key)}]".RemoveHtmlTags());
+                sb.Append($"\n{date:T} {Utils.GetPlayerColor(Utils.GetPlayerById(targetId), true)}(<b>{Utils.GetTrueRoleName(targetId, false)}</b>{Utils.GetSubRolesText(targetId)}) [{Utils.GetVitalText(kvp.Key)}]");
                 if (killerId != byte.MaxValue && killerId != targetId)
-                    sb.Append($"\n\t\t⇐ {Main.AllPlayerNames[killerId]}({Utils.GetTrueRoleName(killerId, false)}{Utils.GetSubRolesText(killerId)})".RemoveHtmlTags());
+                    sb.Append($"\n\t\t⇐ {Utils.GetPlayerColor(Utils.GetPlayerById(killerId), true)}(<b>{Utils.GetTrueRoleName(killerId, false)}</b>{Utils.GetSubRolesText(killerId)})");
             }
-            KillLog = sb.ToString();
+            //KillLog = sb.ToString();
+            var winnerColor = ((CustomRoles)CustomWinnerHolder.WinnerTeam).GetRoleInfo()?.RoleColor ?? Palette.DisabledGrey;
+            var s = ("★").Color(winnerColor);
+            KillLog = Main.gamelog + "\n\n<b>" + s + (GetString($"{(CustomRoles)CustomWinnerHolder.WinnerTeam}") + GetString("Team") + GetString("Win")).Mark(winnerColor) + "</b>" + s;
 
             Main.NormalOptions.KillCooldown = Options.DefaultKillCooldown;
             //winnerListリセット
@@ -163,8 +167,36 @@ namespace TownOfHost
                 case CustomWinner.Terrorist:
                     __instance.Foreground.material.color = Color.red;
                     break;
-                case CustomWinner.Lovers:
-                    __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.Lovers);
+                case CustomWinner.ALovers:
+                    __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.ALovers);
+                    break;
+                case CustomWinner.BLovers: __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.BLovers); break;
+                case CustomWinner.CLovers: __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.CLovers); break;
+                case CustomWinner.DLovers: __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.DLovers); break;
+                case CustomWinner.ELovers: __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.ELovers); break;
+                case CustomWinner.FLovers: __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.FLovers); break;
+                case CustomWinner.GLovers: __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.GLovers); break;
+                case CustomWinner.MaLovers:
+                    __instance.BackgroundBar.material.color = Utils.GetRoleColor(CustomRoles.MaLovers);
+                    break;
+                case CustomWinner.TaskPlayerB:
+                    if (Main.winnerList.Count is 0) break;
+                    if (Main.winnerList.Count == 1)
+                        if (Main.RTAMode)
+                            __instance.WinText.text = "Game Over";
+                        else
+                            CustomWinnerText = Main.AllPlayerNames[Main.winnerList[0]];
+                    else
+                    {
+                        var n = 0;
+                        foreach (var t in Main.TaskBattleTeams)
+                        {
+                            n++;
+                            if (t.Contains(Main.winnerList[0]))
+                                break;
+                        }
+                        CustomWinnerText = string.Format(GetString("Team2"), n);
+                    }
                     break;
                 //引き分け処理
                 case CustomWinner.Draw:
@@ -220,16 +252,31 @@ namespace TownOfHost
                 FontSize = 2f,
             };
 
-            StringBuilder sb = new($"{GetString("RoleSummaryText")}");
-            List<byte> cloneRoles = new(PlayerState.AllPlayerStates.Keys);
-            foreach (var id in Main.winnerList)
+            StringBuilder sb = new();
+            if (Main.RTAMode && Options.CurrentGameMode == CustomGameMode.TaskBattle)
             {
-                sb.Append($"\n<color={CustomWinnerColor}>★</color> ").Append(EndGamePatch.SummaryText[id]);
-                cloneRoles.Remove(id);
+                sb.Append($"{GetString("TaskPlayerB")}:\n　{Main.AllPlayerNames[0]}")
+                .Append($"\n{GetString("TaskCount")}:")
+                .Append($"\n　通常タスク数: {Main.NormalOptions.NumCommonTasks}")
+                .Append($"\n　ショートタスク数: {Main.NormalOptions.NumShortTasks}")
+                .Append($"\n　ロングタスク数: {Main.NormalOptions.NumLongTasks}")
+                .Append($"\nタイム: {HudManagerPatch.GetTaskBattleTimer()}")
+                .Append($"\nマップ: {Main.NormalOptions.MapId}")
+                .Append($"\nベント: " + (Options.TaskBattleCanVent.GetBool() ? "あり" : "なし"));//マップの設定なども記載しなければならない
             }
-            foreach (var id in cloneRoles)
+            else
             {
-                sb.Append($"\n　 ").Append(EndGamePatch.SummaryText[id]);
+                sb.Append(GetString("RoleSummaryText"));
+                List<byte> cloneRoles = new(PlayerState.AllPlayerStates.Keys);
+                foreach (var id in Main.winnerList)
+                {
+                    sb.Append($"\n<color={CustomWinnerColor}>★</color> ").Append(EndGamePatch.SummaryText[id]);
+                    cloneRoles.Remove(id);
+                }
+                foreach (var id in cloneRoles)
+                {
+                    sb.Append($"\n　 ").Append(EndGamePatch.SummaryText[id]);
+                }
             }
             roleSummary = TMPTemplate.Create(
                 "RoleSummaryText",

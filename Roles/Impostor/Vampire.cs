@@ -21,7 +21,8 @@ namespace TownOfHost.Roles.Impostor
                 1300,
                 SetupOptionItem,
                 "va",
-                introSound: () => GetIntroSound(RoleTypes.Shapeshifter)
+                introSound: () => GetIntroSound(RoleTypes.Shapeshifter),
+                from: From.TheOtherRoles
             );
         public Vampire(PlayerControl player)
         : base(
@@ -96,6 +97,11 @@ namespace TownOfHost.Roles.Impostor
         public bool OverrideKillButtonText(out string text)
         {
             text = GetString("VampireBiteButtonText");
+            return true;
+        }
+        public bool OverrideKillButton(out string text)
+        {
+            text = "Vampire_Kill";
             return true;
         }
 

@@ -24,6 +24,7 @@ namespace TownOfHost
         public static GenericPopup InfoPopup;
         public static bool publicok = Main.AllowPublicRoom;
         public static bool matchmaking = false;
+        public static bool nothostbug = false;
         public static string body = "詳細のチェックに失敗しました";
 
         [HarmonyPatch(typeof(MainMenuManager), nameof(MainMenuManager.Start)), HarmonyPostfix, HarmonyPriority(Priority.LowerThanNormal)]
@@ -97,6 +98,7 @@ namespace TownOfHost
                 body = data["body"].ToString();
                 if (body.Contains("📢公開ルーム○")) publicok = true;
                 else if (body.Contains("📢公開ルーム×")) publicok = false;
+                nothostbug = body.Contains("非ホストmodクライアントにバグあり");
             }
             catch (Exception ex)
             {

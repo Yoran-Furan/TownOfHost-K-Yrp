@@ -3,24 +3,26 @@ using System.Text;
 using Hazel;
 
 using AmongUs.GameOptions;
+using TownOfHost.Roles.Crewmate;
 using TownOfHost.Roles.Core;
 using TownOfHost.Roles.Core.Interfaces;
 using static TownOfHost.Translator;
 
 namespace TownOfHost.Roles.Impostor
 {
-    public sealed class Witch : RoleBase, IImpostor
+    public sealed class Witch : RoleBase, IImpostor, IUseTheShButton
     {
         public static readonly SimpleRoleInfo RoleInfo =
             SimpleRoleInfo.Create(
                 typeof(Witch),
                 player => new Witch(player),
                 CustomRoles.Witch,
-                () => RoleTypes.Impostor,
+                () => ((SwitchTrigger)OptionModeSwitchAction.GetValue() is SwitchTrigger.OnShapeshift or SwitchTrigger.OcShButton) ? RoleTypes.Shapeshifter : RoleTypes.Impostor,
                 CustomRoleTypes.Impostor,
                 1500,
                 SetupOptionItem,
-                "wi"
+                "wi",
+                from: From.TheOtherRoles
             );
         public Witch(PlayerControl player)
         : base(
@@ -29,6 +31,8 @@ namespace TownOfHost.Roles.Impostor
         )
         {
             CustomRoleManager.MarkOthers.Add(GetMarkOthers);
+            cool = OptionShcool.GetFloat();
+            occool = cool;
         }
         public override void OnDestroy()
         {
@@ -37,6 +41,7 @@ namespace TownOfHost.Roles.Impostor
             CustomRoleManager.MarkOthers.Remove(GetMarkOthers);
         }
         public static OptionItem OptionModeSwitchAction;
+        public static OptionItem OptionShcool;
         enum OptionName
         {
             WitchModeSwitchAction,
@@ -46,16 +51,27 @@ namespace TownOfHost.Roles.Impostor
             TriggerKill,
             TriggerVent,
             TriggerDouble,
+            OnShapeshift,
+            OcShButton,
         };
 
         public bool IsSpellMode;
+        public float cool;
+        private float occool;
         public List<byte> SpelledPlayer = new();
-        public SwitchTrigger NowSwitchTrigger;
+        public static SwitchTrigger NowSwitchTrigger;
 
         public static List<Witch> Witches = new();
         public static void SetupOptionItem()
         {
             OptionModeSwitchAction = StringOptionItem.Create(RoleInfo, 10, OptionName.WitchModeSwitchAction, EnumHelper.GetAllNames<SwitchTrigger>(), 0, false);
+            OptionShcool = FloatOptionItem.Create(RoleInfo, 11, GeneralOption.Cooldown, new(0f, 180f, 2.5f), 30f, false)
+            .SetValueFormat(OptionFormat.Seconds);
+        }
+        public override void ApplyGameOptions(IGameOptions opt)
+        {
+            AURoleOptions.ShapeshifterDuration = 1f;
+            AURoleOptions.ShapeshifterCooldown = NowSwitchTrigger is SwitchTrigger.OcShButton ? occool : 0;
         }
         public override void Add()
         {
@@ -68,7 +84,7 @@ namespace TownOfHost.Roles.Impostor
         }
         private void SendRPC(bool doSpell, byte target = 255)
         {
-            using var sender = CreateSender(CustomRPC.WitchSync);
+            using var sender = CreateSender();
             sender.Writer.Write(doSpell);
             if (doSpell)
             {
@@ -80,10 +96,8 @@ namespace TownOfHost.Roles.Impostor
             }
         }
 
-        public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+        public override void ReceiveRPC(MessageReader reader)
         {
-            if (rpcType != CustomRPC.WitchSync) return;
-
             var doSpel = reader.ReadBoolean();
             if (doSpel)
             {
@@ -111,6 +125,9 @@ namespace TownOfHost.Roles.Impostor
                     needSwitch = kill;
                     break;
                 case SwitchTrigger.TriggerVent:
+                    needSwitch = !kill;
+                    break;
+                case SwitchTrigger.OnShapeshift:
                     needSwitch = !kill;
                     break;
             }
@@ -142,6 +159,30 @@ namespace TownOfHost.Roles.Impostor
                 SendRPC(true, target.PlayerId);
                 //キルクールの適正化
                 Player.SetKillCooldown();
+            }
+        }
+        public bool UseOCButton => NowSwitchTrigger is SwitchTrigger.OnShapeshift or SwitchTrigger.OcShButton;
+        public void OnClick()
+        {
+            if (NowSwitchTrigger is SwitchTrigger.OcShButton)
+            {
+                var target = Player.GetKillTarget();
+                if (target != null)
+                {
+                    SendRPC(target);
+                    Player.RpcResetAbilityCooldown();
+                    Player.RpcProtectedMurderPlayer(target);
+                    SetSpelled(target);
+                    Utils.NotifyRoles(SpecifySeer: Player);
+                }
+                occool = target is null ? 0 : cool;
+                Player.MarkDirtySettings();
+                Player.RpcResetAbilityCooldown();
+            }
+            else
+            if (NowSwitchTrigger is SwitchTrigger.OnShapeshift)
+            {
+                SwitchSpellMode(false);
             }
         }
         public void OnCheckMurderAsKiller(MurderInfo info)
@@ -180,8 +221,13 @@ namespace TownOfHost.Roles.Impostor
             }
             //実行してもしなくても呪いはすべて解除
             SpelledPlayer.Clear();
-            if (AmongUsClient.Instance.AmHost)
-                SendRPC(true);
+            if (!AmongUsClient.Instance.AmHost) return;
+            SendRPC(true);
+            if (occool is 0)
+            {
+                occool = cool;
+                Player.MarkDirtySettings();
+            }
         }
         public static string GetMarkOthers(PlayerControl seer, PlayerControl seen = null, bool isForMeeting = false)
         {
@@ -196,6 +242,7 @@ namespace TownOfHost.Roles.Impostor
         {
             seen ??= seer;
             if (!Is(seen) || isForMeeting) return "";
+            if (NowSwitchTrigger is SwitchTrigger.OcShButton) return "";
 
             var sb = new StringBuilder();
             sb.Append(isForHud ? GetString("WitchCurrentMode") : "Mode:");

@@ -2,10 +2,11 @@ using System.Collections.Generic;
 using AmongUs.GameOptions;
 using UnityEngine;
 using Hazel;
+using System;
 
 using TownOfHost.Roles.Core;
-
-using static TownOfHost.Modules.MeetingVoteManager;
+using TownOfHost.Roles.Madmate;
+using static TownOfHost.Modules.SelfVoteManager;
 using static TownOfHost.Translator;
 
 namespace TownOfHost.Roles.Crewmate;
@@ -33,30 +34,39 @@ public sealed class FortuneTeller : RoleBase
         Max = OptionMaximum.GetFloat();
         Divination.Clear();
         count = 0;
-        uranaimode = false;
+        mcount = 0;
         Votemode = (VoteMode)OptionVoteMode.GetValue();
         rolename = Optionrolename.GetBool();
         srole = OptionRole.GetBool();
+        cantaskcount = OptionCanTaskcount.GetFloat();
+        onemeetingmaximum = Option1MeetingMaximum.GetFloat();
     }
 
     private static OptionItem OptionMaximum;
     private static OptionItem OptionVoteMode;
     private static OptionItem Optionrolename;
     private static OptionItem OptionRole;
+    private static OptionItem OptionCanTaskcount;
+    private static OptionItem Option1MeetingMaximum;
+
     public float Max;
     public VoteMode Votemode;
     public bool rolename;
     public bool srole;
     int count;
-    bool uranaimode;
+    float cantaskcount;
+    float onemeetingmaximum;
+    float mcount;
     Dictionary<byte, CustomRoles> Divination = new();
 
     enum Option
     {
-        Maximum,
+        Ucount,
         Votemode,
         rolename, //占った相手の名前の上に占い結果を表示するかの設定
-        tRole //占い時役職を表示するか、陣営を表示するかの設定
+        tRole, //占い時役職を表示するか、陣営を表示するかの設定
+        cantaskcount,//効果を発揮タスク数
+        meetingmc,//1会議に占える数(最大で)
     }
     public enum VoteMode
     {
@@ -64,34 +74,32 @@ public sealed class FortuneTeller : RoleBase
         SelfVote,
     }
 
+    public override void Add()
+        => AddS(Player);
+
     private static void SetupOptionItem()
     {
-        OptionMaximum = FloatOptionItem.Create(RoleInfo, 10, Option.Maximum, new(1f, 99f, 1f), 1f, false)
+        OptionMaximum = FloatOptionItem.Create(RoleInfo, 10, Option.Ucount, new(1f, 99f, 1f), 1f, false)
             .SetValueFormat(OptionFormat.Times);
         OptionVoteMode = StringOptionItem.Create(RoleInfo, 11, Option.Votemode, EnumHelper.GetAllNames<VoteMode>(), 0, false);
         Optionrolename = BooleanOptionItem.Create(RoleInfo, 12, Option.rolename, true, false);
         OptionRole = BooleanOptionItem.Create(RoleInfo, 13, Option.tRole, true, false);
+        OptionCanTaskcount = FloatOptionItem.Create(RoleInfo, 14, Option.cantaskcount, new(0, 99, 1), 5, false);
+        Option1MeetingMaximum = FloatOptionItem.Create(RoleInfo, 15, Option.meetingmc, new(0f, 99f, 1f), 0f, false)
+            .SetValueFormat(OptionFormat.Times);
     }
 
-    private void SendRPC(byte targetid)
+    private void SendRPC(byte targetid, CustomRoles role)
     {
-        using var sender = CreateSender(CustomRPC.SetFTc);
+        using var sender = CreateSender();
         sender.Writer.Write(count);
-        using var sender2 = CreateSender(CustomRPC.SetFTtarget);
-        sender2.Writer.Write(targetid);
-        sender2.Writer.WritePacked((int)Utils.GetPlayerById(targetid).GetCustomRole());
+        sender.Writer.Write(targetid);
+        sender.Writer.WritePacked((int)role);
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType == CustomRPC.SetFTc)
-        {
-            count = reader.ReadInt32();
-        }
-        else if (rpcType == CustomRPC.SetFTtarget)
-        {
-            Divination[reader.ReadByte()] = (CustomRoles)reader.ReadPackedInt32();
-        }
-        else return;
+        count = reader.ReadInt32();
+        Divination[reader.ReadByte()] = (CustomRoles)reader.ReadPackedInt32();
     }
     public override string GetSuffix(PlayerControl seer, PlayerControl seen = null, bool isForMeeting = false)
     {
@@ -104,43 +112,32 @@ public sealed class FortuneTeller : RoleBase
         }
         return "";
     }
-    public override string GetProgressText(bool comms = false) => Utils.ColorString(Max <= count ? Color.gray : Color.cyan, $"({Max - count})");
+    public override string GetProgressText(bool comms = false) => Utils.ColorString(MyTaskState.CompletedTasksCount < cantaskcount ? Color.gray : Max <= count ? Color.gray : Color.cyan, $"({Max - count})");
+    public override void OnStartMeeting() => mcount = 0;
     public override bool CheckVoteAsVoter(byte votedForId, PlayerControl voter)
     {
-        if (Max > count && voter.PlayerId == Player.PlayerId)
+        if (MadAvenger.Skill) return true;
+        if (Max > count && Is(voter) && MyTaskState.CompletedTasksCount >= cantaskcount && (mcount < onemeetingmaximum || onemeetingmaximum == 0))
         {
+            var target = Utils.GetPlayerById(votedForId);
             if (Votemode == VoteMode.uvote)
             {
-                if (Player.PlayerId == votedForId || votedForId == Skip) return true;
+                if (Player.PlayerId == votedForId || votedForId == SkipId) return true;
                 Uranai(votedForId);
                 return false;
             }
             else
             {
-                if (!uranaimode && votedForId == Player.PlayerId)
+                if (CheckSelfVoteMode(Player, votedForId, out var status))
                 {
-                    uranaimode = true;
-                    Utils.SendMessage("占いモードになりました！\n占いたいプレイヤーに投票する\nスキップでキャンセル、\nもう一度自投票することで自身に票が入る", Player.PlayerId);
-                    return false;
-                }
-                if (uranaimode)
-                {
-                    if (votedForId == Player.PlayerId)
-                    {
-                        uranaimode = false;
-                        return true;
-                    }
-                    if (votedForId == Skip)
-                    {
-                        uranaimode = false;
-                        Utils.SendMessage("占いをキャンセルしました", Player.PlayerId);
-                        return false;
-                    }
-                    if (votedForId != Skip && votedForId != Player.PlayerId)
-                    {
+                    if (status is VoteStatus.Self)
+                        Utils.SendMessage(string.Format(GetString("SkillMode"), GetString("Mode.Divied"), GetString("Vote.Divied")) + GetString("VoteSkillMode"), Player.PlayerId);
+                    if (status is VoteStatus.Skip)
+                        Utils.SendMessage(GetString("VoteSkillFin"), Player.PlayerId);
+                    if (status is VoteStatus.Vote)
+
                         Uranai(votedForId);
-                        uranaimode = false;
-                    }
+                    SetMode(Player, status is VoteStatus.Self);
                     return false;
                 }
             }
@@ -149,15 +146,16 @@ public sealed class FortuneTeller : RoleBase
     }
     public void Uranai(byte votedForId)
     {
-        count++;
-        Logger.Info($"Player: {Player.name},Target: {votedForId}, count: {count}", "FortuneTeller");
         var target = Utils.GetPlayerById(votedForId);
-        var role = target.GetCustomRole() is CustomRoles.Tairou ? CustomRoles.Crewmate : target.GetCustomRole();
-        var s = "";
+        if (!target.IsAlive()) return;//死んでるならここで処理を止める。
+        count++;//全体のカウント
+        mcount++;//1会議のカウント
+        var FtR = target.GetRoleClass()?.GetFtResults(Player); //結果を変更するかチェック
+        var role = FtR is not CustomRoles.NotAssigned ? FtR.Value : target.GetCustomRole(); ;
+        var s = GetString("Skill.Tellerfin") + (role.IsCrewmate() ? "!" : "...");
         Divination[votedForId] = role;
-        SendRPC(votedForId);
-        if (role.IsCrewmate()) s = "です！";
-        else s = "です...";
-        Utils.SendMessage(Utils.GetPlayerById(votedForId).name + "さんを占いました。\n結果は.." + (srole ? GetString($"{role}") : GetString($"{role.GetCustomRoleTypes()}")) + s + $"\n\n残り{Max - count}回占うことができます", Player.PlayerId);
+        SendRPC(votedForId, role);
+        Utils.SendMessage(string.Format(GetString("Skill.Teller"), Utils.GetPlayerColor(target, true), srole ? "<b>" + GetString($"{role}").Color(Utils.GetRoleColor(role)) + "</b>" : GetString($"{role.GetCustomRoleTypes()}")) + s + $"\n\n" + (onemeetingmaximum != 0 ? string.Format(GetString("RemainingOneMeetingCount"), Math.Min(onemeetingmaximum - mcount, Max - count)) : string.Format(GetString("RemainingCount"), Max - count) + (Votemode == VoteMode.SelfVote ? "\n\n" + GetString("VoteSkillFin") : "")), Player.PlayerId);
+        Logger.Info($"Player: {Player.name},Target: {target.name}, count: {count}", "FortuneTeller");
     }
 }

@@ -115,6 +115,27 @@ namespace TownOfHost
                         _ => res
                     };
                 }
+                if (Main.White)
+                {
+                    res = str switch
+                    {
+                        "Bakery" => "ホワイトチョコ作りのパン屋",
+                        "BakeryInfo" => "今日はパンじゃなくてホワイトチョコだよ！",
+                        "ChefInfo" => "ホワイトチョコを配ろう！",
+                        "Message.Bakery1" => "パン屋がホワイトチョコを作ったよ！",
+                        _ => res
+                    };
+                }
+                if (Main.GoldenWeek)
+                {
+                    res = str switch
+                    {
+                        "Bakery" => "鯉のぼり作りのパン屋...?",
+                        "BakeryInfo" => "今回はパンではなくこいのぼり制作！",
+                        "Message.Bakery1" => "パン屋がこいのぼりを大量に制作したよ...?",
+                        _ => res
+                    };
+                }
             }
             if (!translateMaps.ContainsKey(str)) //translateMapsにない場合、StringNamesにあれば取得する
             {

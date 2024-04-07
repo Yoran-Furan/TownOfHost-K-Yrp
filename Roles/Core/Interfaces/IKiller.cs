@@ -63,4 +63,24 @@ public interface IKiller
         text = default;
         return false;
     }
+    /// <summary>
+    /// キルボタンの画像を変更します。
+    /// </summary>
+    /// <param name="text"></param>
+    /// <returns></returns>
+    public bool OverrideKillButton(out string text)
+    {
+        text = default;
+        return false;
+    }
+    /// <summary>
+    /// インポスターベントボタンの画像を変更します。
+    /// </summary>
+    /// <param name="text"></param>
+    /// <returns></returns>
+    public bool OverrideImpVentButton(out string text)
+    {
+        text = default;
+        return false;
+    }
 }

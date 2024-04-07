@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Collections.Generic;
 using UnityEngine;
 using Hazel;
 using AmongUs.GameOptions;
+
 using static TownOfHost.Translator;
 
 namespace TownOfHost.Roles.Core;
@@ -86,9 +88,9 @@ public abstract class RoleBase : IDisposable
     protected class RoleRPCSender : IDisposable
     {
         public MessageWriter Writer;
-        public RoleRPCSender(RoleBase role, CustomRPC rpcType)
+        public RoleRPCSender(RoleBase role)
         {
-            Writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)rpcType, SendOption.Reliable, -1);
+            Writer = AmongUsClient.Instance.StartRpcImmediately(PlayerControl.LocalPlayer.NetId, (byte)CustomRPC.CustomRoleSync, SendOption.Reliable, -1);
             Writer.Write(role.Player.PlayerId);
         }
         public void Dispose()
@@ -102,9 +104,9 @@ public abstract class RoleBase : IDisposable
     /// </summary>
     /// <param name="rpcType">送信するCustomRPC</param>
     /// <returns>送信に使用するRoleRPCSender</returns>
-    protected RoleRPCSender CreateSender(CustomRPC rpcType)
+    protected RoleRPCSender CreateSender()
     {
-        return new RoleRPCSender(this, rpcType);
+        return new RoleRPCSender(this);
     }
     /// <summary>
     /// RPCを受け取った時に呼ばれる関数
@@ -112,7 +114,7 @@ public abstract class RoleBase : IDisposable
     /// </summary>
     /// <param name="reader">届いたRPCの情報</param>
     /// <param name="rpcType">届いたCustomRPC</param>
-    public virtual void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public virtual void ReceiveRPC(MessageReader reader)
     { }
     /// <summary>
     /// 能力ボタンを使えるかどうか
@@ -152,6 +154,22 @@ public abstract class RoleBase : IDisposable
     { }
 
     /// <summary>
+    /// 自視点のみ変身する
+    /// 抜け殻を自視点のみに残すことが可能
+    /// </summary>
+    public virtual bool CanDesyncShapeshift => false;
+
+    /// <summary>
+    /// シェイプシフトされる前に呼ばれる関数
+    /// falseを返すとシェイプシフトをなかったことにできる
+    /// 自分自身について呼ばれるため本人確認不要
+    /// Host以外も呼ばれるので注意
+    /// </summary>
+    /// <param name="target">変身先</param>
+    /// <param name="shouldAnimate">アニメーションを再生するか</param>
+    public virtual bool CheckShapeshift(PlayerControl target, ref bool shouldAnimate) => true;
+
+    /// <summary>
     /// タスクターンに常時呼ばれる関数
     /// 自分自身について呼ばれるため本人確認不要
     /// Host以外も呼ばれるので注意
@@ -179,12 +197,24 @@ public abstract class RoleBase : IDisposable
     /// <param name="id"></param>
     /// <returns>falseを返すとベントから追い出され、他人からアニメーションも見られません</returns>
     public virtual bool OnEnterVent(PlayerPhysics physics, int ventId) => true;
-
+    /// <summary>
+    /// ベント移動を封じるかの関数。
+    /// OnEnterVentの方が速く呼ばれる。
+    /// </summary>
+    /// <param name="physics"></param>
+    /// <param name="Id"></param>
+    /// <returns>falseを返すとベント移動が出来ません。</returns>
+    public virtual bool CantVentIdo(PlayerPhysics physics, int ventId) => true;
     /// <summary>
     /// ミーティングが始まった時に呼ばれる関数
     /// </summary>
     public virtual void OnStartMeeting()
     { }
+    /// <summary>
+    /// ミーティングが始まった時同数などと一緒に表示されるメッセージ
+    /// </summary>
+    /// <returns></returns>
+    public virtual string MeetingMeg() => "";
 
     /// <summary>
     /// 自分が投票した瞬間，票がカウントされる前に呼ばれる<br/>
@@ -217,6 +247,12 @@ public abstract class RoleBase : IDisposable
     /// タスクターンが始まる直前に毎回呼ばれる関数
     /// </summary>
     public virtual void AfterMeetingTasks()
+    { }
+
+    /// <summary>
+    /// 天秤会議が始まる直前に毎回呼ばれる関数
+    /// </summary>
+    public virtual void BalancerAfterMeetingTasks()
     { }
 
     /// <summary>
@@ -338,23 +374,11 @@ public abstract class RoleBase : IDisposable
         };
         return str.HasValue ? GetString(str.Value) : "Invalid";
     }
-
     /// <summary>
-    /// ホストからチャットが送られてきた時の情報 TOHk
+    /// アビリティボタンの画像を変更します。
     /// </summary>
-    public virtual void Chat(ChatController __instance)
-    { }
-    /// <summary>
-    /// 参加側からチャットが送られてきた時の情報 TOHk
-    /// </summary>
-    public virtual void Chat2(PlayerControl player, string text)
-    { }
-    public virtual bool Pet(PlayerControl __instance) => false;
-    /// <summary>
-    /// 投票が終わったあとの票変更 TOHk
-    /// </summary>
-    public virtual void ChangeVote()
-    { }
+    /// <param name="text"></param>
+    /// <returns></returns>
 
     /// <summary>
     /// 会議をキャンセルするために使う<br/>
@@ -362,6 +386,24 @@ public abstract class RoleBase : IDisposable
     /// trueを返すとキャンセルされる
     /// </summary>
     public virtual bool CancelReportDeadBody(PlayerControl reporter, GameData.PlayerInfo target) => false;
+
+    /// <summary>
+    /// 占い結果で表示される役職を変更することができる<br/>
+    /// NotAssignedを返すと変更されない
+    /// </summary>
+    public virtual CustomRoles GetFtResults(PlayerControl player) => CustomRoles.NotAssigned;
+
+    /// <summary>
+    /// 投票結果を返す<br/>
+    /// trueを返すと追放の「ランダム追放」「全員追放」などが実行されない
+    /// </summary>
+    public virtual bool VotingResults(ref GameData.PlayerInfo Exiled, ref bool IsTie, Dictionary<byte, int> vote, byte[] mostVotedPlayers, bool ClearAndExile) => false;
+
+    /// <summary>
+    /// ベントの出入り、移動で呼び出される
+    /// </summary>
+    public virtual void OnVentilationSystemUpdate(PlayerControl user, VentilationSystem.Operation Operation, int ventId)
+    { }
 
     protected static AudioClip GetIntroSound(RoleTypes roleType) =>
         RoleManager.Instance.AllRoles.Where((role) => role.Role == roleType).FirstOrDefault().IntroSound;

@@ -10,7 +10,7 @@ using static TownOfHost.Translator;
 
 namespace TownOfHost.Roles.Impostor
 {
-    public sealed class Bomber : RoleBase, IImpostor
+    public sealed class Bomber : RoleBase, IImpostor, IUseTheShButton
     {
         public static readonly SimpleRoleInfo RoleInfo =
             SimpleRoleInfo.Create(
@@ -41,18 +41,20 @@ namespace TownOfHost.Roles.Impostor
         static OptionItem OptionBlastrange;
         static OptionItem OptionExplosion;
         static OptionItem OptionCooldown;
+        static OptionItem OptionOC;
         enum OptionName
         {
             BomberKillDelay,
             blastrange,
             Explosion,
-            Cooldown
+            Cooldown,
+            UOcShButton
         }
 
         static float KillDelay;
         static float Blastrange = 1;
-        static int Explosion;
-        static bool ExplosionMode;
+        int Explosion;
+        bool ExplosionMode;
         static float Cooldown;
 
         public bool CanBeLastImpostor { get; } = false;
@@ -65,18 +67,19 @@ namespace TownOfHost.Roles.Impostor
             OptionBlastrange = FloatOptionItem.Create(RoleInfo, 11, OptionName.blastrange, new(1f, 30f, 0.5f), 1f, false);
             OptionExplosion = IntegerOptionItem.Create(RoleInfo, 12, OptionName.Explosion, new(1, 99, 1), 2, false);
             OptionCooldown = FloatOptionItem.Create(RoleInfo, 13, OptionName.Cooldown, new(0f, 999f, 1f), 0, false);
+            OptionOC = BooleanOptionItem.Create(RoleInfo, 14, OptionName.UOcShButton, false, false);
         }
 
         private void SendRPC()
         {
-            using var sender = CreateSender(CustomRPC.SetBbc);
+            using var sender = CreateSender();
             sender.Writer.Write(Explosion);
+            sender.Writer.Write(ExplosionMode);
         }
-        public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+        public override void ReceiveRPC(MessageReader reader)
         {
-            if (rpcType != CustomRPC.SetBbc) return;
-
             Explosion = reader.ReadInt32();
+            ExplosionMode = reader.ReadBoolean();
         }
 
         public void OnCheckMurderAsKiller(MurderInfo info)
@@ -103,10 +106,22 @@ namespace TownOfHost.Roles.Impostor
         }
         public override void OnShapeshift(PlayerControl target)
         {
-            if (target.PlayerId == Player.PlayerId && 0 < Explosion)
+            if (target.PlayerId != Player.PlayerId && 0 < Explosion && !UseOCButton)
             {
                 ExplosionMode = !ExplosionMode;
             }
+        }
+        public void OnClick()
+        {
+            var target = Player.GetKillTarget();
+            if (0 >= Explosion || target == null) return;
+            Explosion--;
+            SendRPC();
+            ExplosionMode = false;
+            Player.RpcResetAbilityCooldown();
+            Player.RpcProtectedMurderPlayer(target);
+            ExplosionPlayers.Add(target.PlayerId, 0f);
+            Utils.NotifyRoles(SpecifySeer: Player);
         }
         public override string GetProgressText(bool comms = false) => ExplosionMode ? "<color=red>◆" : "" + Utils.ColorString(0 < Explosion ? Color.red : Color.gray, $"({Explosion})");
         public override void OnFixedUpdate(PlayerControl _)
@@ -128,6 +143,7 @@ namespace TownOfHost.Roles.Impostor
                             if (target2.IsAlive())
                             {
                                 PlayerState.GetByPlayerId(target2.PlayerId).DeathReason = CustomDeathReason.Bombed;
+                                target2.SetRealKiller(Player);
                                 target2.RpcMurderPlayer(target2, true);
                                 RPC.PlaySoundRPC(Player.PlayerId, Sounds.KillSound);
                                 Logger.Info($"{target.name}を爆発させました。", "bomber");
@@ -143,6 +159,8 @@ namespace TownOfHost.Roles.Impostor
                 }
             }
         }
+
+        public bool UseOCButton => OptionOC.GetBool();
         public override void OnReportDeadBody(PlayerControl _, GameData.PlayerInfo __)
         {
             ExplosionPlayers.Clear();

@@ -44,6 +44,12 @@ namespace TownOfHost
         {
             Logger.Info($"切断(理由:{reason}:{stringReason}, ping:{__instance.Ping})", "Session");
 
+            if (GameStates.IsFreePlay && Main.EditMode)
+            {
+                CustomSpawnSaveandLoadManager.Save();
+                Main.EditMode = false;
+            }
+
             if (AmongUsClient.Instance.AmHost && GameStates.InGame)
                 GameManager.Instance.RpcEndGame(GameOverReason.ImpostorDisconnect, false);
 
@@ -55,7 +61,7 @@ namespace TownOfHost
     {
         public static void Postfix(AmongUsClient __instance, [HarmonyArgument(0)] ClientData client)
         {
-            Logger.Info($"{client.PlayerName}(ClientID:{client.Id})が参加", "Session");
+            Logger.Info($"{client.PlayerName}(ClientID:{client.Id})(FriendCode:{client.FriendCode})(PuiD:{client.GetHashedPuid()})が参加", "Session");
             if (AmongUsClient.Instance.AmHost && client.FriendCode == "" && Options.KickPlayerFriendCodeNotExist.GetBool())
             {
                 AmongUsClient.Instance.KickPlayer(client.Id, false);
@@ -74,6 +80,7 @@ namespace TownOfHost
             {
                 RPC.RpcSyncRoomTimer();
                 RPC.SyncYomiage();
+                //_ = new LateTask(() => client.Character.RpcSetNamePrivate($"<line-height=1000%><pos=30><size=2.8><color=green>host:<{Main.ModColor}>{Main.ModName} v{Main.PluginVersion}</color>\n</color><size=2.5>{client.PlayerName}\n</line-height>\n<line-height=30%>", true, force: true), 1.5f);
             }
         }
     }
@@ -91,12 +98,61 @@ namespace TownOfHost
             //            main.RealNames.Remove(data.Character.PlayerId);
             if (GameStates.IsInGame)
             {
-                if (data.Character.Is(CustomRoles.Lovers) && !data.Character.Data.IsDead)
-                    foreach (var lovers in Main.LoversPlayers.ToArray())
+                if (data.Character.Is(CustomRoles.ALovers) && !data.Character.Data.IsDead)
+                    foreach (var lovers in Main.ALoversPlayers.ToArray())
                     {
-                        Main.isLoversDead = true;
-                        Main.LoversPlayers.Remove(lovers);
-                        PlayerState.GetByPlayerId(lovers.PlayerId).RemoveSubRole(CustomRoles.Lovers);
+                        Main.isALoversDead = true;
+                        Main.ALoversPlayers.Remove(lovers);
+                        PlayerState.GetByPlayerId(lovers.PlayerId).RemoveSubRole(CustomRoles.ALovers);
+                    }
+                if (data.Character.Is(CustomRoles.BLovers) && !data.Character.Data.IsDead)
+                    foreach (var lovers in Main.BLoversPlayers.ToArray())
+                    {
+                        Main.isBLoversDead = true;
+                        Main.BLoversPlayers.Remove(lovers);
+                        PlayerState.GetByPlayerId(lovers.PlayerId).RemoveSubRole(CustomRoles.BLovers);
+                    }
+                if (data.Character.Is(CustomRoles.CLovers) && !data.Character.Data.IsDead)
+                    foreach (var lovers in Main.CLoversPlayers.ToArray())
+                    {
+                        Main.isCLoversDead = true;
+                        Main.CLoversPlayers.Remove(lovers);
+                        PlayerState.GetByPlayerId(lovers.PlayerId).RemoveSubRole(CustomRoles.CLovers);
+                    }
+                if (data.Character.Is(CustomRoles.DLovers) && !data.Character.Data.IsDead)
+                    foreach (var lovers in Main.DLoversPlayers.ToArray())
+                    {
+                        Main.isDLoversDead = true;
+                        Main.DLoversPlayers.Remove(lovers);
+                        PlayerState.GetByPlayerId(lovers.PlayerId).RemoveSubRole(CustomRoles.DLovers);
+                    }
+                if (data.Character.Is(CustomRoles.ELovers) && !data.Character.Data.IsDead)
+                    foreach (var lovers in Main.ELoversPlayers.ToArray())
+                    {
+                        Main.isELoversDead = true;
+                        Main.ELoversPlayers.Remove(lovers);
+                        PlayerState.GetByPlayerId(lovers.PlayerId).RemoveSubRole(CustomRoles.ELovers);
+                    }
+                if (data.Character.Is(CustomRoles.FLovers) && !data.Character.Data.IsDead)
+                    foreach (var lovers in Main.FLoversPlayers.ToArray())
+                    {
+                        Main.isFLoversDead = true;
+                        Main.FLoversPlayers.Remove(lovers);
+                        PlayerState.GetByPlayerId(lovers.PlayerId).RemoveSubRole(CustomRoles.FLovers);
+                    }
+                if (data.Character.Is(CustomRoles.GLovers) && !data.Character.Data.IsDead)
+                    foreach (var lovers in Main.GLoversPlayers.ToArray())
+                    {
+                        Main.isGLoversDead = true;
+                        Main.GLoversPlayers.Remove(lovers);
+                        PlayerState.GetByPlayerId(lovers.PlayerId).RemoveSubRole(CustomRoles.GLovers);
+                    }
+                if (data.Character.Is(CustomRoles.MaLovers) && !data.Character.Data.IsDead)
+                    foreach (var Mlovers in Main.MaMaLoversPlayers.ToArray())
+                    {
+                        Main.isMaLoversDead = true;
+                        Main.MaMaLoversPlayers.Remove(Mlovers);
+                        PlayerState.GetByPlayerId(Mlovers.PlayerId).RemoveSubRole(CustomRoles.MaLovers);
                     }
                 var state = PlayerState.GetByPlayerId(data.Character.PlayerId);
                 if (state.DeathReason == CustomDeathReason.etc) //死因が設定されていなかったら

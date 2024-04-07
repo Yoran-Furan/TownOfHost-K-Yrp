@@ -34,7 +34,10 @@ public static class SwitchSystemUpdateSystemPatch
             (player.GetRoleClass() is SchrodingerCat schrodingerCat && schrodingerCat.AmMadmate);
         if (isMadmate && !Options.MadmateCanFixLightsOut.GetBool())
         {
-            // 直せないならキャンセル
+            return false;
+        }
+        if (player.Is(CustomRoles.Water))
+        {
             return false;
         }
         //Airshipの特定の停電を直せないならキャンセル

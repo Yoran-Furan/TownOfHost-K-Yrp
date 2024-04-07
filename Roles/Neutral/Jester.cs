@@ -15,7 +15,8 @@ public sealed class Jester : RoleBase
             50000,
             null,
             "je",
-            "#ec62a5"
+            "#ec62a5",
+            from: From.Jester
         );
     public Jester(PlayerControl player)
     : base(

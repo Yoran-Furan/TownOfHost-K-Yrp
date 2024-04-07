@@ -15,7 +15,8 @@ public sealed class Bait : RoleBase
             20000,
             null,
             "ba",
-            "#00f7ff"
+            "#00f7ff",
+            from: From.TheOtherRoles
         );
     public Bait(PlayerControl player)
     : base(

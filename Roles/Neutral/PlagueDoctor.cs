@@ -26,7 +26,8 @@ public sealed class PlagueDoctor : RoleBase, IKiller
             "pd",
             "#ff6633",
             true,
-            introSound: () => GetIntroSound(RoleTypes.Crewmate)
+            introSound: () => GetIntroSound(RoleTypes.Crewmate),
+            from: From.TOR_GM_Edition
         );
     public PlagueDoctor(PlayerControl player)
     : base(
@@ -138,14 +139,12 @@ public sealed class PlagueDoctor : RoleBase, IKiller
     }
     public void SendRPC(byte targetId, float rate)
     {
-        using var sender = CreateSender(CustomRPC.SyncPlagueDoctor);
+        using var sender = CreateSender();
         sender.Writer.Write(targetId);
         sender.Writer.Write(rate);
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.SyncPlagueDoctor) return;
-
         var targetId = reader.ReadByte();
         var rate = reader.ReadSingle();
         InfectInfos[targetId] = rate;
@@ -322,5 +321,10 @@ public sealed class PlagueDoctor : RoleBase, IKiller
             foreach (var plagueDoctor in Main.AllPlayerControls.Where(p => p.Is(CustomRoles.PlagueDoctor)))
                 CustomWinnerHolder.WinnerIds.Add(plagueDoctor.PlayerId);
         }
+    }
+    public bool OverrideKillButton(out string text)
+    {
+        text = "Plague_Kill";
+        return true;
     }
 }

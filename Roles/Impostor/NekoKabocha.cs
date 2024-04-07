@@ -17,7 +17,8 @@ public sealed class NekoKabocha : RoleBase, IImpostor, INekomata
             3300,
             SetupOptionItems,
             "nk",
-            introSound: () => PlayerControl.LocalPlayer.KillSfx
+            introSound: () => PlayerControl.LocalPlayer.KillSfx,
+            from: From.TOR_GM_Edition
         );
     public NekoKabocha(PlayerControl player)
     : base(
@@ -53,7 +54,7 @@ public sealed class NekoKabocha : RoleBase, IImpostor, INekomata
     public override void OnMurderPlayerAsTarget(MurderInfo info)
     {
         // 普通のキルじゃない．もしくはキルを行わない時はreturn
-        if (info.IsAccident || info.IsSuicide || !info.CanKill || !info.DoKill)
+        if (GameStates.IsMeeting || info.IsAccident || info.IsSuicide || !info.CanKill || !info.DoKill)
         {
             return;
         }

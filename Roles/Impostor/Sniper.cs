@@ -20,7 +20,8 @@ public sealed class Sniper : RoleBase, IImpostor
             CustomRoleTypes.Impostor,
             1800,
             SetupOptionItem,
-            "snp"
+            "snp",
+            from: From.NebulaontheShip
         );
     public Sniper(PlayerControl player)
     : base(
@@ -32,6 +33,10 @@ public sealed class Sniper : RoleBase, IImpostor
         PrecisionShooting = SniperPrecisionShooting.GetBool();
         AimAssist = SniperAimAssist.GetBool();
         AimAssistOneshot = SniperAimAssistOnshot.GetBool();
+        Cankill = OpCankill.GetBool();
+        Canshape = OpCanShape.GetBool();
+        Cool = OpMadac.GetFloat();
+        Jizoku = OpMadaj.GetFloat();
 
         CustomRoleManager.MarkOthers.Add(GetMarkOthers);
     }
@@ -44,12 +49,19 @@ public sealed class Sniper : RoleBase, IImpostor
     static OptionItem SniperPrecisionShooting;
     static OptionItem SniperAimAssist;
     static OptionItem SniperAimAssistOnshot;
+    static OptionItem OpCanShape;
+    static OptionItem OpCankill;
+    static OptionItem OpMadaj;
+    static OptionItem OpMadac;
     enum OptionName
     {
         SniperBulletCount,
         SniperPrecisionShooting,
         SniperAimAssist,
-        SniperAimAssistOneshot
+        SniperAimAssistOneshot,
+        SncanKill,
+        SncanSh,
+        MadaJizoku
     }
     Vector3 SnipeBasePosition;
     Vector3 LastPosition;
@@ -64,15 +76,27 @@ public sealed class Sniper : RoleBase, IImpostor
     bool PrecisionShooting;
     bool AimAssist;
     bool AimAssistOneshot;
-
+    bool Cankill;
+    bool Canshape;
+    float Cool;
+    float Jizoku;
     bool MeetingReset;
     public static void SetupOptionItem()
     {
-        SniperBulletCount = IntegerOptionItem.Create(RoleInfo, 10, OptionName.SniperBulletCount, new(1, 5, 1), 2, false)
+        SniperBulletCount = IntegerOptionItem.Create(RoleInfo, 10, OptionName.SniperBulletCount, new(1, 99, 1), 2, false)
             .SetValueFormat(OptionFormat.Pieces);
-        SniperPrecisionShooting = BooleanOptionItem.Create(RoleInfo, 11, OptionName.SniperPrecisionShooting, false, false);
-        SniperAimAssist = BooleanOptionItem.Create(RoleInfo, 12, OptionName.SniperAimAssist, false, false);
-        SniperAimAssistOnshot = BooleanOptionItem.Create(RoleInfo, 13, OptionName.SniperAimAssistOneshot, false, false, SniperAimAssist);
+        OpMadac = FloatOptionItem.Create(RoleInfo, 11, GeneralOption.Cooldown, new(0f, 180f, 2.5f), 40f, false).SetValueFormat(OptionFormat.Seconds);
+        OpMadaj = FloatOptionItem.Create(RoleInfo, 12, OptionName.MadaJizoku, new(0f, 180f, 2.5f), 10f, false).SetValueFormat(OptionFormat.Seconds);
+        SniperPrecisionShooting = BooleanOptionItem.Create(RoleInfo, 13, OptionName.SniperPrecisionShooting, false, false);
+        SniperAimAssist = BooleanOptionItem.Create(RoleInfo, 14, OptionName.SniperAimAssist, false, false);
+        SniperAimAssistOnshot = BooleanOptionItem.Create(RoleInfo, 15, OptionName.SniperAimAssistOneshot, false, false, SniperAimAssist);
+        OpCanShape = BooleanOptionItem.Create(RoleInfo, 16, OptionName.SncanSh, false, false);
+        OpCankill = BooleanOptionItem.Create(RoleInfo, 17, OptionName.SncanKill, true, false);
+    }
+    public override void ApplyGameOptions(IGameOptions opt)
+    {
+        AURoleOptions.ShapeshifterDuration = Jizoku;
+        AURoleOptions.ShapeshifterCooldown = Cool;
     }
     public override void Add()
     {
@@ -91,7 +115,7 @@ public sealed class Sniper : RoleBase, IImpostor
     private void SendRPC()
     {
         Logger.Info($"{Player.GetNameWithRole()}:SendRPC", "Sniper");
-        using var sender = CreateSender(CustomRPC.SniperSync);
+        using var sender = CreateSender();
 
         var snList = ShotNotify;
         sender.Writer.Write(snList.Count);
@@ -101,9 +125,8 @@ public sealed class Sniper : RoleBase, IImpostor
         }
     }
 
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.SniperSync) return;
         ShotNotify.Clear();
         var count = reader.ReadInt32();
         while (count > 0)
@@ -115,7 +138,14 @@ public sealed class Sniper : RoleBase, IImpostor
     }
     public bool CanUseKillButton()
     {
-        return Player.IsAlive() && BulletCount <= 0;
+        if (!Player.IsAlive()) return false;
+        if (Cankill) return true;
+        return BulletCount <= 0;
+    }
+    public override bool CheckShapeshift(PlayerControl target, ref bool animate)
+    {
+        if (!Player.IsAlive() || (BulletCount <= 0 && !Canshape)) return false;
+        return true;
     }
     /// <summary>
     /// 狙撃の場合死因設定
@@ -235,7 +265,7 @@ public sealed class Sniper : RoleBase, IImpostor
             );
 
             //あたった通知
-            Player.RpcProtectedMurderPlayer();
+            Player.SetKillCooldown();
 
             //スナイプが起きたことを聞こえそうな対象に通知したい
             targets.Remove(snipedTarget);

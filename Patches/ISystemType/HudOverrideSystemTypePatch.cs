@@ -17,13 +17,25 @@ public static class HudOverrideSystemTypeUpdateSystemPatch
             amount = newReader.ReadByte();
             newReader.Recycle();
         }
-
+        if (!AmongUsClient.Instance.AmHost)
+        {
+            return true;
+        }
+        if (amount.HasBit(SwitchSystem.DamageSystem))
+        {
+            return true;
+        }
+        var tags = (HqHudSystemType.Tags)(amount & HqHudSystemType.TagMask);
         var playerRole = player.GetRoleClass();
         var isMadmate =
             player.Is(CustomRoleTypes.Madmate) ||
             // マッド属性化時に削除
             (playerRole is SchrodingerCat schrodingerCat && schrodingerCat.AmMadmate);
-        if ((amount & HudOverrideSystemType.DamageBit) <= 0 && isMadmate && !Options.MadmateCanFixComms.GetBool())
+        if (tags == HqHudSystemType.Tags.FixBit && isMadmate && !Options.MadmateCanFixComms.GetBool())
+        {
+            return false;
+        }
+        if (player.Is(CustomRoles.LowBattery))
         {
             return false;
         }

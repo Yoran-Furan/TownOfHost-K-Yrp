@@ -18,7 +18,8 @@ public sealed class SpeedBooster : RoleBase
             20600,
             SetupOptionItem,
             "sb",
-            "#00ffff"
+            "#00ffff",
+            from: From.TownOfHost
         );
     public SpeedBooster(PlayerControl player)
     : base(

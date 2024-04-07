@@ -16,7 +16,8 @@ public sealed class ToiletFan : RoleBase
             SetupOptionItem,
             "to",
             "#5f5573",
-            introSound: () => GetIntroSound(RoleTypes.Crewmate)
+            introSound: () => GetIntroSound(RoleTypes.Crewmate),
+            from: From.SuperNewRoles
         );
     public ToiletFan(PlayerControl player)
     : base(
@@ -40,7 +41,7 @@ public sealed class ToiletFan : RoleBase
     private static void SetupOptionItem()
     {
         OptionCooldown = FloatOptionItem.Create(RoleInfo, 10, OptionName.Cooldown, new(0f, 10f, 1f), 5f, false)
-    .SetValueFormat(OptionFormat.Seconds);
+            .SetValueFormat(OptionFormat.Seconds);
     }
     public override bool OnEnterVent(PlayerPhysics physics, int ventId)
     {

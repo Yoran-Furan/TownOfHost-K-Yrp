@@ -5,7 +5,7 @@ using TownOfHost.Roles.Core.Interfaces;
 
 namespace TownOfHost.Roles.Neutral;
 
-public sealed class CountKiller : RoleBase, IKiller, ISchrodingerCatOwner
+public sealed class CountKiller : RoleBase, ILNKiller, ISchrodingerCatOwner
 {
     public static readonly SimpleRoleInfo RoleInfo =
         SimpleRoleInfo.Create(
@@ -52,12 +52,12 @@ public sealed class CountKiller : RoleBase, IKiller, ISchrodingerCatOwner
     int KillCount = 0;
     private static void SetupOptionItem()
     {
-        OptionKillCooldown = FloatOptionItem.Create(RoleInfo, 10, GeneralOption.KillCooldown, new(2.5f, 180f, 2.5f), 20f, false)
+        OptionKillCooldown = FloatOptionItem.Create(RoleInfo, 10, GeneralOption.KillCooldown, new(0f, 180f, 2.5f), 20f, false)
             .SetValueFormat(OptionFormat.Seconds);
-        OptionCanVent = BooleanOptionItem.Create(RoleInfo, 11, GeneralOption.CanVent, true, false);
-        OptionHasImpostorVision = BooleanOptionItem.Create(RoleInfo, 12, GeneralOption.ImpostorVision, true, false);
-        OptionVictoryCount = IntegerOptionItem.Create(RoleInfo, 13, OptionName.VictoryCount, new(1, 10, 1), 5, false)
-            .SetValueFormat(OptionFormat.Times);
+        OptionVictoryCount = IntegerOptionItem.Create(RoleInfo, 11, OptionName.VictoryCount, new(1, 10, 1), 5, false)
+        .SetValueFormat(OptionFormat.Times);
+        OptionCanVent = BooleanOptionItem.Create(RoleInfo, 12, GeneralOption.CanVent, true, false);
+        OptionHasImpostorVision = BooleanOptionItem.Create(RoleInfo, 13, GeneralOption.ImpostorVision, true, false);
     }
     public SchrodingerCat.TeamType SchrodingerCatChangeTo => SchrodingerCat.TeamType.CountKiller;
     public float CalculateKillCooldown() => KillCooldown;
@@ -68,17 +68,15 @@ public sealed class CountKiller : RoleBase, IKiller, ISchrodingerCatOwner
         KillCooldown = OptionKillCooldown.GetFloat();
 
         VictoryCount = OptionVictoryCount.GetInt();
-        Logger.Info($"{Utils.GetPlayerById(playerId)?.GetNameWithRole()} : 後{VictoryCount}発", "CountKiller");
+        Logger.Info($"{Utils.GetPlayerById(playerId)?.GetNameWithRole()} : 後{VictoryCount - KillCount}発", "CountKiller");
     }
     private void SendRPC()
     {
-        using var sender = CreateSender(CustomRPC.KillerCount);
+        using var sender = CreateSender();
         sender.Writer.Write(VictoryCount);
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.KillerCount) return;
-
         VictoryCount = reader.ReadInt32();
     }
     public bool CanUseKillButton() => Player.IsAlive() && VictoryCount > 0;
@@ -95,7 +93,7 @@ public sealed class CountKiller : RoleBase, IKiller, ISchrodingerCatOwner
                 return;
             }
             KillCount++;
-            Logger.Info($"{killer.GetNameWithRole()} : 残り{KillCount}発", "CountKiller");
+            Logger.Info($"{killer.GetNameWithRole()} : 残り{VictoryCount - KillCount}発", "CountKiller");
             SendRPC();
             killer.ResetKillCooldown();
 

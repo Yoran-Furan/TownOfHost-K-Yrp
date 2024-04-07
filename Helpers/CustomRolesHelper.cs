@@ -51,7 +51,57 @@ namespace TownOfHost
                 CustomRoles.Impostor or
                 CustomRoles.Shapeshifter;
         }
+        public static bool IsAddOn(this CustomRoles roles)
+        {
+            return
+                roles is
+                //ラスト系
+                CustomRoles.LastImpostor or
+                CustomRoles.LastNeutral or
+                CustomRoles.Workhorse or
+                //バフ
+                CustomRoles.Moon or
+                CustomRoles.Guesser or
+                CustomRoles.Speeding or
+                CustomRoles.Watcher or
+                CustomRoles.Sun or
+                CustomRoles.Director or
+                CustomRoles.Connecting or
+                CustomRoles.Serial or
+                CustomRoles.AdditionalVoter or
+                CustomRoles.Opener or
+                CustomRoles.Psychic or
+                CustomRoles.Bakeneko or
+                CustomRoles.Nurse or
+                //デバフ
+                CustomRoles.NotConvener or
+                CustomRoles.Notvoter or
+                CustomRoles.Elector or
+                CustomRoles.Water or
+                CustomRoles.Slacker or
+                CustomRoles.Transparent or
+                CustomRoles.LowBattery;
+        }
+        public static bool IsRiaju(this CustomRoles roles)
+        {
+            return roles is
+            CustomRoles.ALovers or
+            CustomRoles.BLovers or
+            CustomRoles.CLovers or
+            CustomRoles.DLovers or
+            CustomRoles.ELovers or
+            CustomRoles.FLovers or
+            CustomRoles.GLovers or
+            CustomRoles.MaLovers;
+        }
 
+        public static bool IsWhiteCrew(this CustomRoles roles)
+        {
+            return
+                roles is
+                CustomRoles.UltraStar or
+                CustomRoles.TaskStar;
+        }
         public static CustomRoleTypes GetCustomRoleTypes(this CustomRoles role)
         {
             CustomRoleTypes type = CustomRoleTypes.Crewmate;
@@ -137,5 +187,6 @@ namespace TownOfHost
         Jackal,
         Remotekiller,
         TaskPlayer,
+        GrimReaper,
     }
 }

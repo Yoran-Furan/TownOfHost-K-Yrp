@@ -6,7 +6,27 @@ using TownOfHost.Roles.Core.Descriptions;
 using static TownOfHost.Options;
 
 namespace TownOfHost.Roles.Core;
+public enum From
+{
+    None,
+    TheOtherRoles,
+    TOR_GM_Edition,
+    TOR_GM_Haoming_Edition,
+    SuperNewRoles,
+    ExtremeRoles,
+    NebulaontheShip,
+    au_libhalt_net,
+    FoolersMod,
+    SheriffMod,
+    Jester,
+    TownOfUs,
+    TownOfHost,
+    TownOfHost_Y,
+    TownOfHost_for_E,
+    TownOfHost_E,
+    RevolutionaryHostRoles,
 
+}
 public class SimpleRoleInfo
 {
     public Type ClassType;
@@ -30,6 +50,9 @@ public class SimpleRoleInfo
     private Func<bool> canMakeMadmate;
     public bool CanMakeMadmate => canMakeMadmate?.Invoke() == true;
     public RoleAssignInfo AssignInfo { get; }
+    public From From;
+    /// <summary>コンビネーション役職</summary>
+    public CombinationRoles Combination;
     /// <summary>役職の説明関係</summary>
     public RoleDescription Description { get; private set; }
 
@@ -48,7 +71,9 @@ public class SimpleRoleInfo
         TabGroup tab,
         Func<AudioClip> introSound,
         Func<bool> canMakeMadmate,
-        RoleAssignInfo assignInfo
+        RoleAssignInfo assignInfo,
+        CombinationRoles combination,
+        From from
     )
     {
         ClassType = classType;
@@ -64,6 +89,8 @@ public class SimpleRoleInfo
         this.canMakeMadmate = canMakeMadmate;
         ChatCommand = chatCommand;
         AssignInfo = assignInfo;
+        From = from;
+        Combination = combination;
 
         if (colorCode == "")
             colorCode = customRoleType switch
@@ -80,7 +107,7 @@ public class SimpleRoleInfo
             tab = CustomRoleType switch
             {
                 CustomRoleTypes.Impostor => TabGroup.ImpostorRoles,
-                CustomRoleTypes.Madmate => TabGroup.ImpostorRoles,
+                CustomRoleTypes.Madmate => TabGroup.MadmateRoles,
                 CustomRoleTypes.Crewmate => TabGroup.CrewmateRoles,
                 CustomRoleTypes.Neutral => TabGroup.NeutralRoles,
                 _ => tab
@@ -104,7 +131,9 @@ public class SimpleRoleInfo
         Func<AudioClip> introSound = null,
         Func<bool> canMakeMadmate = null,
         CountTypes? countType = null,
-        RoleAssignInfo assignInfo = null
+        RoleAssignInfo assignInfo = null,
+        CombinationRoles combination = CombinationRoles.None,
+        From from = From.None
     )
     {
         countType ??= customRoleType == CustomRoleTypes.Impostor ?
@@ -127,7 +156,10 @@ public class SimpleRoleInfo
             tab,
             introSound,
             canMakeMadmate,
-            assignInfo);
+            assignInfo,
+            combination,
+            from
+            );
         roleInfo.Description = new SingleRoleDescription(roleInfo);
         return roleInfo;
     }
@@ -137,7 +169,9 @@ public class SimpleRoleInfo
         RoleTypes baseRoleType,
         string colorCode = "",
         bool canMakeMadmate = false,
-        RoleAssignInfo assignInfo = null
+        RoleAssignInfo assignInfo = null,
+        CombinationRoles combination = CombinationRoles.None,
+        From from = From.None
     )
     {
         CustomRoles roleName;
@@ -188,7 +222,9 @@ public class SimpleRoleInfo
             TabGroup.MainSettings,
             null,
             () => canMakeMadmate,
-            assignInfo ?? new(roleName, customRoleType));
+            assignInfo ?? new(roleName, customRoleType),
+            combination,
+            from);
         roleInfo.Description = new VanillaRoleDescription(roleInfo, baseRoleType);
         return roleInfo;
     }

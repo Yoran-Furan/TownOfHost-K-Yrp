@@ -50,13 +50,11 @@ public sealed class Chef : RoleBase, IKiller, IAdditionalWinner
     }
     private void SendRPC(byte targetid)
     {
-        using var sender = CreateSender(CustomRPC.SetChefTarget);
+        using var sender = CreateSender();
         sender.Writer.Write(targetid);
     }
-    public override void ReceiveRPC(MessageReader reader, CustomRPC rpcType)
+    public override void ReceiveRPC(MessageReader reader)
     {
-        if (rpcType != CustomRPC.SetChefTarget) return;
-
         ChefTarget.Add(reader.ReadByte());
     }
     public void OnCheckMurderAsKiller(MurderInfo info)
@@ -114,5 +112,10 @@ public sealed class Chef : RoleBase, IKiller, IAdditionalWinner
         CustomWinnerHolder.ResetAndSetWinner(CustomWinner.Chef);
         CustomWinnerHolder.WinnerIds.Add(exiled.PlayerId);
         DecidedWinner = true;
+    }
+    public bool OverrideKillButton(out string text)
+    {
+        text = "Chef_Kill";
+        return true;
     }
 }

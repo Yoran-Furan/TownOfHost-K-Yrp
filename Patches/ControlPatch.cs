@@ -93,6 +93,9 @@ namespace TownOfHost
             //ミーティングを強制終了
             if (GetKeysDown(KeyCode.Return, KeyCode.M, KeyCode.LeftShift) && GameStates.IsMeeting)
             {
+                MeetingVoteManager.Voteresult = Translator.GetString("voteskip") + "※Host";
+                Main.gamelog += $"\n{System.DateTime.Now.ToString("HH.mm.ss")} [Vote]　" + Translator.GetString("voteskip") + "※Host";
+                GameStates.Meeting = false;
                 ExileControllerWrapUpPatch.AntiBlackout_LastExiled = null;
                 MeetingHud.Instance.RpcClose();
             }
@@ -104,8 +107,19 @@ namespace TownOfHost
             //即スタート
             if (Input.GetKeyDown(KeyCode.LeftShift) && GameStates.IsCountDown)
             {
-                Logger.Info("CountDownTimer set to 0", "KeyCommand");
-                GameStartManager.Instance.countDownTimer = 0;
+                if (!Main.AllPlayerControls.Where(p => p.Data.DefaultOutfit.ColorId < 0 || Palette.PlayerColors.Length <= p.Data.DefaultOutfit.ColorId).Any())
+                {
+                    Logger.Info("CountDownTimer set to 0", "KeyCommand");
+                    GameStartManager.Instance.countDownTimer = 0;
+                }
+                else
+                {
+                    //ホスト以外開始判定になるのを防ぐ
+                    _ = new LateTask(() =>
+                    {
+                        GameStartManager.Instance.countDownTimer = 0;
+                    }, 0.5f, "CountDownTimer set to 0");
+                }
             }
             //カウントダウンキャンセル
             if (Input.GetKeyDown(KeyCode.C) && GameStates.IsCountDown)
@@ -214,7 +228,7 @@ namespace TownOfHost
                 Vector2 pos = PlayerControl.LocalPlayer.NetTransform.transform.position;
                 foreach(var pc in PlayerControl.AllPlayerControls) {
                     if(!pc.AmOwner) {
-                        pc.NetTransform.RpcSnapTo(pos);
+                        pc.NetTransform.RpcSnapToForced(pos);
                         pos.x += 0.5f;
                     }
                 }

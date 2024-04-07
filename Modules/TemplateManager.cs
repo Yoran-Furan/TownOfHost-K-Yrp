@@ -32,9 +32,11 @@ namespace TownOfHost
             ["NumCommonTasks"] = () => Main.NormalOptions.NumCommonTasks.ToString(),
             ["NumLongTasks"] = () => Main.NormalOptions.NumLongTasks.ToString(),
             ["NumShortTasks"] = () => Main.NormalOptions.NumShortTasks.ToString(),
+            ["NumImpostors"] = () => Main.NormalOptions.NumImpostors.ToString(),
             ["Date"] = () => DateTime.Now.ToShortDateString(),
             ["Roles"] = () => Utils.GetActiveRoleText(),
             ["Timer"] = () => Utils.GetTimer(),
+            ["ModColor"] = () => Main.ModColor,
         };
 
         [PluginModuleInitializer]
@@ -90,7 +92,7 @@ namespace TownOfHost
                     HudManager.Instance.Chat.AddChat(PlayerControl.LocalPlayer, string.Format(GetString("Message.TemplateNotFoundHost"), str, tags.Join(delimiter: ", ")));
                 else Utils.SendMessage(string.Format(GetString("Message.TemplateNotFoundClient"), str), playerId);
             }
-            else for (int i = 0; i < sendList.Count; i++) Utils.SendMessage(ApplyReplaceDictionary(sendList[i]), playerId);
+            else for (int i = 0; i < sendList.Count; i++) Utils.SendMessage(ApplyReplaceDictionary(sendList[i]), playerId, str == "welcome" ? $"<color={Main.ModColor}>【This Room Use \"Town Of Host-K\"】" : "");
         }
 
         private static string ApplyReplaceDictionary(string text)
