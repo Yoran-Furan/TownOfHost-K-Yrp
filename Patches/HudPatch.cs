@@ -8,16 +8,18 @@ using static TownOfHost.Translator;
 
 namespace TownOfHost
 {
+    public static class CustomButton
+    {
+        public static Sprite Get(string name) => Utils.LoadSprite($"TownOfHost.Resources.{name}.png", 115f);
+    }
+
     [HarmonyPatch(typeof(HudManager), nameof(HudManager.Update))]
     class HudManagerPatch
     {
-        public static bool ShowDebugText = false;
-        public static int LastCallNotifyRolesPerSecond = 0;
         public static int NowCallNotifyRolesCount = 0;
         public static int LastSetNameDesyncCount = 0;
-        public static int LastFPS = 0;
-        public static int NowFrameCount = 0;
-        public static float FrameRateTimer = 0.0f;
+        public static float TaskBattleTimer = 0.0f;
+        public static Vector2 TaskBattlep;
         public static TMPro.TextMeshPro LowerInfoText;
         public static void Postfix(HudManager __instance)
         {
@@ -28,7 +30,7 @@ namespace TownOfHost
             //壁抜け
             if (Input.GetKeyDown(KeyCode.LeftControl))
             {
-                if ((!AmongUsClient.Instance.IsGameStarted || !GameStates.IsOnlineGame)
+                if ((!AmongUsClient.Instance.IsGameStarted || !GameStates.IsOnlineGame || !Main.EditMode)
                     && player.CanMove)
                 {
                     player.Collider.offset = new Vector2(0f, 127f);
@@ -37,7 +39,7 @@ namespace TownOfHost
             //壁抜け解除
             if (player.Collider.offset.y == 127f)
             {
-                if (!Input.GetKey(KeyCode.LeftControl) || (AmongUsClient.Instance.IsGameStarted && GameStates.IsOnlineGame))
+                if (!Input.GetKey(KeyCode.LeftControl) || (AmongUsClient.Instance.IsGameStarted && GameStates.IsOnlineGame) || Main.EditMode)
                 {
                     player.Collider.offset = new Vector2(0f, -0.3636f);
                 }
@@ -48,6 +50,18 @@ namespace TownOfHost
                 __instance.GameSettings.fontSizeMin =
                 __instance.GameSettings.fontSizeMax = (TranslationController.Instance.currentLanguage.languageID == SupportedLangs.Japanese || Main.ForceJapanese.Value) ? 1.05f : 1.2f;
             }
+
+            //カスタムスポーン位置設定中ならキルボタン等を非表示にする
+            if (GameStates.IsFreePlay && Main.EditMode)
+            {
+                __instance.ReportButton.Hide();
+                __instance.ImpostorVentButton.Hide();
+                __instance.KillButton.Hide();
+                __instance.SabotageButton.Hide();
+                __instance.AbilityButton.Show();
+                __instance.AbilityButton.OverrideText(GetString("EditCSp"));
+            }
+
             //ゲーム中でなければ以下は実行されない
             if (!AmongUsClient.Instance.IsGameStarted) return;
 
@@ -58,14 +72,17 @@ namespace TownOfHost
                 if (player.IsAlive())
                 {
                     var roleClass = player.GetRoleClass();
-                    if (roleClass != null)
+                    if (Main.CustomSprite.Value)
                     {
-                        var killLabel = (roleClass as IKiller)?.OverrideKillButtonText(out string text) == true ? text : GetString(StringNames.KillLabel);
-                        __instance.KillButton.OverrideText(killLabel);
-                        if (roleClass.HasAbility)
+                        if (roleClass != null)
                         {
-                            __instance.AbilityButton.OverrideText(roleClass.GetAbilityButtonText());
-                            __instance.AbilityButton.ToggleVisible(roleClass.CanUseAbilityButton() && GameStates.IsInTask);
+                            var killLabel = (roleClass as IKiller)?.OverrideKillButtonText(out string text) == true ? text : GetString(StringNames.KillLabel);
+                            __instance.KillButton.OverrideText(killLabel);
+                            if (roleClass.HasAbility)
+                            {
+                                __instance.AbilityButton.OverrideText(roleClass.GetAbilityButtonText());
+                                __instance.AbilityButton.ToggleVisible(roleClass.CanUseAbilityButton() && GameStates.IsInTask);
+                            }
                         }
                     }
 
@@ -85,6 +102,19 @@ namespace TownOfHost
 
                     LowerInfoText.text = roleClass?.GetLowerText(player, isForMeeting: GameStates.IsMeeting, isForHud: true) ?? "";
                     LowerInfoText.enabled = LowerInfoText.text != "";
+
+                    if (Main.RTAMode && GameStates.IsInTask)
+                    {
+                        LowerInfoText.enabled = true;
+                        LowerInfoText.text = GetTaskBattleTimer();
+                        if (TaskBattlep != (Vector2)PlayerControl.LocalPlayer.transform.position)
+                            if (TaskBattlep == new Vector2(-25f, 40f))
+                                TaskBattlep = PlayerControl.LocalPlayer.transform.position;
+                            else
+                                TaskBattleTimer += Time.deltaTime;
+                    }
+                    if (!GameStates.IsInTask)
+                        TaskBattleTimer = 0f;
 
                     if (!AmongUsClient.Instance.IsGameStarted && AmongUsClient.Instance.NetworkMode != NetworkModes.FreePlay)
                     {
@@ -157,6 +187,44 @@ namespace TownOfHost
                 if (Input.GetKeyDown(KeyCode.Alpha8)) RepairSender.Input(8);
                 if (Input.GetKeyDown(KeyCode.Alpha9)) RepairSender.Input(9);
                 if (Input.GetKeyDown(KeyCode.Return)) RepairSender.InputEnter();
+            }
+        }
+        public static string GetTaskBattleTimer()
+        {
+            int hours = (int)TaskBattleTimer / 3600;
+            int minutes = (int)TaskBattleTimer % 3600 / 60;
+            int seconds = (int)TaskBattleTimer % 60;
+            int milliseconds = (int)(TaskBattleTimer % 1 * 1000);
+            return hours > 0
+                ? string.Format("{0:00} : {1:00} : {2:00} : {3:000}", hours, minutes, seconds, milliseconds)
+                : string.Format("{0:00} : {1:00} : {2:000}", minutes, seconds, milliseconds);
+        }
+        //カスタムぼたーん。
+        //参考→https://github.com/0xDrMoe/TownofHost-Enhanced/releases/tag/v1.5.1
+        public static void BottonHud()
+        {
+            if (!AmongUsClient.Instance.IsGameStarted) return;
+            if (SetHudActivePatch.IsActive)
+            {
+                if (!GameStates.IsModHost) return;
+                var player = PlayerControl.LocalPlayer;
+                if (player == null) return;
+                if (player == !GameStates.IsModHost) return;
+                if (!AmongUsClient.Instance.IsGameStarted) return;
+
+                var __instance = DestroyableSingleton<HudManager>.Instance;
+                var roleClass = player.GetRoleClass();
+                if (Main.CustomSprite.Value)
+                {
+                    if (roleClass != null)
+                    {
+                        if ((roleClass as IKiller)?.OverrideKillButton(out string name) == true && Main.CustomSprite.Value)
+                            __instance.KillButton.graphic.sprite = CustomButton.Get(name);
+
+                        if ((roleClass as IKiller)?.OverrideImpVentButton(out string name2) == true && Main.CustomSprite.Value)
+                            __instance.ImpostorVentButton.graphic.sprite = CustomButton.Get(name2);
+                    }
+                }
             }
         }
     }

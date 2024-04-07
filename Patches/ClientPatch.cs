@@ -2,7 +2,10 @@ using System.Globalization;
 using HarmonyLib;
 using InnerNet;
 using UnityEngine;
+
 using TownOfHost.Modules;
+using TownOfHost.Patches;
+
 using static TownOfHost.Translator;
 
 namespace TownOfHost
@@ -22,7 +25,7 @@ namespace TownOfHost
                 Logger.SendInGame(message);
                 return false;
             }
-            if (ModUpdater.isBroken || ModUpdater.hasUpdate || !VersionChecker.IsSupported || !Main.IsPublicAvailableOnThisVersion)
+            if (ModUpdater.isBroken || ModUpdater.hasUpdate || !VersionChecker.IsSupported || (!Main.IsPublicAvailableOnThisVersion && !Patches.CustomServerHelper.IsCs()))
             {
                 var message = "";
                 if (!Main.IsPublicAvailableOnThisVersion) message = GetString("PublicNotAvailableOnThisVersion");
@@ -36,13 +39,16 @@ namespace TownOfHost
             return true;
         }
     }
+
     [HarmonyPatch(typeof(MMOnlineManager), nameof(MMOnlineManager.Start))]
     class MMOnlineManagerStartPatch
     {
         public static void Postfix(MMOnlineManager __instance)
         {
-            if (!(ModUpdater.hasUpdate || ModUpdater.isBroken || !VersionChecker.IsSupported || !ModUpdater.publicok || !Main.IsPublicAvailableOnThisVersion)) return;
-            var obj = GameObject.Find("FindGameButton");
+            MMOnlineManagerUpdatePatch.check = true;
+            MMOnlineManagerUpdatePatch.LastServer = ServerManager.Instance.CurrentRegion.TranslateName;
+            if (!(ModUpdater.hasUpdate || ModUpdater.isBroken || !VersionChecker.IsSupported || !ModUpdater.publicok || (!Main.IsPublicAvailableOnThisVersion && !CustomServerHelper.IsCs()))) return;
+            var obj = GameObject.Find("NormalMenu/Buttons/FindGameButton/FindGameButton");
             if (obj)
             {
                 obj?.SetActive(false);
@@ -69,6 +75,30 @@ namespace TownOfHost
                     message = GetString("PublicNotAvailableOnThisVersion");
                 }
                 textObj.text = $"<size=2>{Utils.ColorString(Color.red, message)}</size>";
+            }
+        }
+    }
+    [HarmonyPatch(typeof(MMOnlineManager), nameof(MMOnlineManager.Update))]
+    class MMOnlineManagerUpdatePatch
+    {
+        public static bool check = false;
+        public static StringNames LastServer;
+        public static void Postfix(MMOnlineManager __instance)
+        {
+            if (!check) return;
+            if (LastServer != ServerManager.Instance.CurrentRegion.TranslateName)
+            {
+                LastServer = ServerManager.Instance.CurrentRegion.TranslateName;
+                if (!CustomServerHelper.IsCs())
+                {
+                    if (!GameObject.Find("CanNotJoinPublic"))
+                        MMOnlineManagerStartPatch.Postfix(__instance);
+                }
+                else
+                {
+                    GameObject.Find("NormalMenu/Buttons/FindGameButton/FindGameButton").SetActive(true);
+                    Object.Destroy(GameObject.Find("CanNotJoinPublic"));
+                }
             }
         }
     }

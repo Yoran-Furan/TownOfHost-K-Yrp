@@ -17,6 +17,14 @@ public static class HqHudSystemTypeUpdateSystemPatch
             amount = newReader.ReadByte();
             newReader.Recycle();
         }
+        if (!AmongUsClient.Instance.AmHost)
+        {
+            return true;
+        }
+        if (amount.HasBit(SwitchSystem.DamageSystem))
+        {
+            return true;
+        }
 
         var tags = (HqHudSystemType.Tags)(amount & HqHudSystemType.TagMask);
         var playerRole = player.GetRoleClass();
@@ -28,7 +36,10 @@ public static class HqHudSystemTypeUpdateSystemPatch
         {
             return false;
         }
-
+        if (player.Is(CustomRoles.LowBattery))
+        {
+            return false;
+        }
         if (playerRole is ISystemTypeUpdateHook systemTypeUpdateHook && !systemTypeUpdateHook.UpdateHqHudSystem(__instance, amount))
         {
             return false;

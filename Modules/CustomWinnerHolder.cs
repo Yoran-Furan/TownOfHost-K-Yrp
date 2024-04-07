@@ -29,15 +29,18 @@ namespace TownOfHost
             AdditionalWinnerRoles = new();
             WinnerRoles = new();
             WinnerIds = new();
+            GameStates.Meeting = false;
         }
         public static void ClearWinners()
         {
+
             WinnerRoles.Clear();
             WinnerIds.Clear();
         }
         /// <summary><para>WinnerTeamに値を代入します。</para><para>すでに代入されている場合、AdditionalWinnerRolesに追加します。</para></summary>
         public static void SetWinnerOrAdditonalWinner(CustomWinner winner)
         {
+            GameStates.Meeting = false;
             if (WinnerTeam == CustomWinner.Default) WinnerTeam = winner;
             else AdditionalWinnerRoles.Add((CustomRoles)winner);
         }
@@ -51,6 +54,7 @@ namespace TownOfHost
         /// <summary><para>既存の値をすべて削除してから、WinnerTeamに値を代入します。</para></summary>
         public static void ResetAndSetWinner(CustomWinner winner)
         {
+            GameStates.Meeting = false;
             Reset();
             WinnerTeam = winner;
         }

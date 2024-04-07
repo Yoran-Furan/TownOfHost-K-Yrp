@@ -1,5 +1,7 @@
 using HarmonyLib;
 using Hazel;
+using TownOfHost.Roles.Core;
+using TownOfHost.Roles.Core.Interfaces;
 
 namespace TownOfHost.Patches.ISystemType;
 
@@ -41,6 +43,18 @@ public static class MushroomMixupSabotageSystemDeterioratePatch
         {
             // Desyncインポスター目線のプレイヤー名の表示/非表示を反映
             Utils.NotifyRoles(ForceLoop: true);
+
+            if (!__instance.IsActive)
+            {
+                _ = new LateTask(() =>
+                {
+                    //ワンクリックを使う人のシェイプをリセット
+                    Main.AllPlayerControls.Do(pc =>
+                    {
+                        (pc.GetRoleClass() as IUseTheShButton)?.ResetSkin(pc);
+                    });
+                }, 1.1f);
+            }
         }
     }
 }

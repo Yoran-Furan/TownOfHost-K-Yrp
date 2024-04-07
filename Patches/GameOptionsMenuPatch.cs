@@ -5,6 +5,7 @@ using AmongUs.GameOptions;
 using HarmonyLib;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using UnityEngine;
+using TownOfHost.Modules;
 using static TownOfHost.Translator;
 using Object = UnityEngine.Object;
 
@@ -25,6 +26,7 @@ namespace TownOfHost
     [HarmonyPriority(Priority.First)]
     public static class GameOptionsMenuPatch
     {
+        public static TMPro.TextMeshPro Timer;
         public static void Postfix(GameOptionsMenu __instance)
         {
             foreach (var ob in __instance.Children)
@@ -49,6 +51,12 @@ namespace TownOfHost
                         break;
                 }
             }
+            var ResetToDefault = GameObject.Find("ResetToDefault");
+            if (ResetToDefault != null && Main.HideResetToDefault.Value)
+            {
+                ResetToDefault.SetActive(false);
+            }
+
             var template = Object.FindObjectsOfType<StringOption>().FirstOrDefault();
             if (template == null) return;
 
@@ -101,8 +109,8 @@ namespace TownOfHost
                         stringOption.ValueText.text = option.GetString();
                         stringOption.name = option.Name;
                         stringOption.transform.FindChild("Background").localScale = new Vector3(1.2f, 1f, 1f);
-                        stringOption.transform.FindChild("Plus_TMP").localPosition += new Vector3(0.3f, 0f, 0f);
-                        stringOption.transform.FindChild("Minus_TMP").localPosition += new Vector3(0.3f, 0f, 0f);
+                        stringOption.transform.FindChild("Plus_TMP").localPosition += new Vector3(option.HideValue ? 100f : 0.3f, option.HideValue ? 100f : 0f, option.HideValue ? 100f : 0f);
+                        stringOption.transform.FindChild("Minus_TMP").localPosition += new Vector3(option.HideValue ? 100f : 0.3f, option.HideValue ? 100f : 0f, option.HideValue ? 100f : 0f);
                         stringOption.transform.FindChild("Value_TMP").localPosition += new Vector3(0.3f, 0f, 0f);
                         stringOption.transform.FindChild("Title_TMP").localPosition += new Vector3(0.15f, 0f, 0f);
                         stringOption.transform.FindChild("Title_TMP").GetComponent<RectTransform>().sizeDelta = new Vector2(3.5f, 0.37f);
@@ -139,6 +147,43 @@ namespace TownOfHost
                 };
                 button.OnClick.AddListener(value);
             }
+
+            // ボタン生成
+            CreateButton("OptionReset", Color.red, new Vector2(-4f, -4.8f), new Action(() =>
+            {
+                OptionItem.AllOptions.ToArray().Where(x => x.Id > 0).Do(x => x.SetValue(x.DefaultValue));
+            }));
+            CreateButton("OptionCopy", Color.green, new Vector2(-4f, -4.2f), new Action(() =>
+            {
+                OptionSerializer.SaveToClipboard();
+            }));
+            CreateButton("OptionLoad", Color.green, new Vector2(-4f, -4.5f), new Action(() =>
+            {
+                OptionSerializer.LoadFromClipboard();
+            }));
+
+            var timergobj = GameObject.Find("Timer");
+            if (timergobj != null)
+            {
+                Timer = GameObject.Instantiate(GameObject.Find("Timer"), GameObject.Find("Main Camera/PlayerOptionsMenu(Clone)/MainSettingsTab").transform.parent)
+                    .GetComponent<TMPro.TextMeshPro>();
+                Timer.name = "MenuTimer";
+                Timer.transform.localPosition = new Vector3(-4.85f, 2.1f, -30f);
+                Timer.transform.localScale = new Vector2(0.8f, 0.8f);
+            }
+
+            static void CreateButton(string text, Color color, Vector2 position, Action action)
+            {
+                var ToggleButton = Object.Instantiate(GameObject.Find("Main Camera/Hud/Menu/GeneralTab/ControlGroup/JoystickModeButton"), GameObject.Find("Main Camera/PlayerOptionsMenu(Clone)/MainSettingsTab").transform);
+                ToggleButton.transform.localPosition = new Vector3(position.x, position.y, -15f);
+                ToggleButton.transform.localScale = new Vector2(0.6f, 0.6f);
+                ToggleButton.name = text;
+                ToggleButton.transform.FindChild("Text_TMP").GetComponent<TMPro.TextMeshPro>().text = Translator.GetString(text);
+                ToggleButton.transform.FindChild("Background").GetComponent<SpriteRenderer>().color = color;
+                var passiveButton = ToggleButton.GetComponent<PassiveButton>();
+                passiveButton.OnClick = new();
+                passiveButton.OnClick.AddListener(action);
+            }
         }
     }
 
@@ -149,6 +194,16 @@ namespace TownOfHost
 
         public static void Postfix(GameOptionsMenu __instance)
         {
+            //タイマー表示
+            if (GameOptionsMenuPatch.Timer != null)
+            {
+                var rtimer = GameStartManagerPatch.GetTimer();
+                rtimer = Mathf.Max(0f, rtimer -= Time.deltaTime);
+                int minutes = (int)rtimer / 60;
+                int seconds = (int)rtimer % 60;
+                GameOptionsMenuPatch.Timer.text = Utils.ColorString(rtimer <= 60 ? Color.red : Color.white, $"{minutes:00}:{seconds:00}");
+            }
+
             if (__instance.transform.parent.parent.name == "Game Settings") return;
             foreach (var tab in EnumHelper.GetAllValues<TabGroup>())
             {
@@ -172,7 +227,16 @@ namespace TownOfHost
 
                     enabled = AmongUsClient.Instance.AmHost &&
                         !option.IsHiddenOn(Options.CurrentGameMode);
-
+                    //起動時以外で表示/非表示を切り替える際に使う
+                    if (enabled)
+                    {
+                        switch (option.Name)
+                        {
+                            case "KickModClient":
+                                enabled = ModUpdater.nothostbug;
+                                break;
+                        }
+                    }
                     var opt = option.OptionBehaviour.transform.Find("Background").GetComponent<SpriteRenderer>();
                     opt.size = new(5.0f, 0.45f);
                     while (parent != null && enabled)
@@ -235,7 +299,7 @@ namespace TownOfHost
             if (option == null) return true;
 
             __instance.OnValueChanged = new Action<OptionBehaviour>((o) => { });
-            __instance.TitleText.text = option.GetName();
+            __instance.TitleText.text = option.GetName() + option.Fromtext;
             __instance.Value = __instance.oldValue = option.CurrentValue;
             __instance.ValueText.text = option.GetString();
 

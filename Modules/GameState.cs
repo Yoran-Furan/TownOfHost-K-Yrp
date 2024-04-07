@@ -29,7 +29,10 @@ namespace TownOfHost
         }
         public (DateTime, byte) RealKiller;
         public PlainShipRoom LastRoom;
+        /// <summary>会議等の後に湧いた後かどうか<br/>ホスト以外は正しい値にならないので注意</summary>
+        public bool HasSpawned { get; set; } = false;
         public Dictionary<byte, string> TargetColorData;
+        public float NumberOfRemainingButtons = 0;
         public PlayerState(byte playerId)
         {
             MainRole = CustomRoles.NotAssigned;
@@ -43,6 +46,7 @@ namespace TownOfHost
             RealKiller = (DateTime.MinValue, byte.MaxValue);
             LastRoom = null;
             TargetColorData = new();
+            NumberOfRemainingButtons = Main.NormalOptions.NumEmergencyMeetings;
         }
         public CustomRoles GetCustomRole()
         {
@@ -219,6 +223,7 @@ namespace TownOfHost
         public static bool IsLocalGame => AmongUsClient.Instance.NetworkMode == NetworkModes.LocalGame;
         public static bool IsFreePlay => AmongUsClient.Instance.NetworkMode == NetworkModes.FreePlay;
         public static bool IsInTask => InGame && !MeetingHud.Instance;
+        public static bool Meeting;
         public static bool IsMeeting => InGame && MeetingHud.Instance;
         public static bool IsCountDown => GameStartManager.InstanceExists && GameStartManager.Instance.startState == GameStartManager.StartingStates.Countdown;
     }

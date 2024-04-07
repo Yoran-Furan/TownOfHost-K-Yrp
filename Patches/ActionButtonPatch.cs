@@ -1,4 +1,6 @@
 using HarmonyLib;
+using TownOfHost.Roles.Core;
+using TownOfHost.Roles.Core.Interfaces;
 
 namespace TownOfHost.Patches;
 
@@ -18,6 +20,23 @@ public static class SabotageButtonDoClickPatch
         return false;
     }
 }
+
+[HarmonyPatch(typeof(AbilityButton), nameof(AbilityButton.DoClick))]
+public static class AbilityButtonDoClickPatch
+{
+    public static bool Prefix()
+    {
+        if (!AmongUsClient.Instance.AmHost || HudManager._instance.AbilityButton.isCoolingDown || !PlayerControl.LocalPlayer.CanMove || Utils.IsActive(SystemTypes.MushroomMixupSabotage)) return true;
+        if (PlayerControl.LocalPlayer.GetRoleClass() is IUseTheShButton sb && sb.UseOCButton)
+        {
+            PlayerControl.LocalPlayer.Data.Role.SetCooldown();
+            sb.OnClick();
+            return false;
+        }
+        return true;
+    }
+}
+
 /*[HarmonyPatch(typeof(KillButton), nameof(KillButton.DoClick))]
 public static class KillButtonDoClickPatch
 {
